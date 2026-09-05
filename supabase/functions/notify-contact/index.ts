@@ -108,8 +108,8 @@ Deno.serve(async (req: Request) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "CabezaPerro <onboarding@resend.dev>",
-          to: "aguilarjaimecav@gmail.com",
+          from: "CabezaPerro <notificaciones@cabezaperro.com>",
+          to: "cabezaperro015@gmail.com",
           subject: `Nuevo mensaje de contacto — ${c.nombre} (${c.motivo})`,
           html: buildOwnerHtml(c),
         }),
@@ -125,7 +125,7 @@ Deno.serve(async (req: Request) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "CabezaPerro <onboarding@resend.dev>",
+            from: "CabezaPerro <notificaciones@>",
             to: c.email,
             subject: "Hemos recibido tu mensaje — CabezaPerro",
             html: buildCustomerHtml(c),
