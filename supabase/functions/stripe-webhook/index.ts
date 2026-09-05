@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 const STORE_NAME = "CabezaPerro";
-const STORE_EMAIL = "aguilarjaimecav@gmail.com";
-const RESEND_FROM = "CabezaPerro <onboarding@resend.dev>";
+const STORE_EMAIL = "cabezaperro015@gmail.com";
+const RESEND_FROM = "CabezaPerro <notificaciones@cabezaperro.com>";
 const STORE_PHONE = "+34 644 789 324";
 
 interface OrderRow {
