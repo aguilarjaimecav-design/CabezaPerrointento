@@ -156,7 +156,7 @@ Deno.serve(async (req: Request) => {
         },
         body: JSON.stringify({
           from: "CabezaPerro <notificaciones@cabezaperro.com>",
-          to: "aguilarjaimecav@gmail.com",
+          to: "cabezaperro015@gmail.com",
           subject: `Nueva reserva de paseo — ${b.nombre_dueno} (${b.fecha} ${b.hora})`,
           html: buildOwnerHtml(b),
         }),
