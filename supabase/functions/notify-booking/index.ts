@@ -155,7 +155,7 @@ Deno.serve(async (req: Request) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "CabezaPerro <onboarding@resend.dev>",
+          from: "CabezaPerro <notificaciones@cabezaperro.com>",
           to: "aguilarjaimecav@gmail.com",
           subject: `Nueva reserva de paseo — ${b.nombre_dueno} (${b.fecha} ${b.hora})`,
           html: buildOwnerHtml(b),
