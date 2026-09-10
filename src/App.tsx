@@ -1,7 +1,7 @@
 import { FormEvent, MouseEvent as ReactMouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, CircleUserRound,
-  Clock3, Heart, Instagram, MapPin, Menu, MessageCircle, Minus, PackageCheck,
+  Clock3, Heart, Instagram, MapPin, MessageCircle, Minus, PackageCheck,
   PawPrint, Phone, Plus, Search, ShoppingBag, ShoppingCart, Sparkles, Truck, X, Mail,
   Home as HomeIcon, ShieldCheck, Trash2, Utensils, Star, Send, Dog, Cat, Tag, ZoomIn,
   Download, FileText,
@@ -198,7 +198,6 @@ function SearchBar({ term, setTerm, onSubmit, onClose }: { term: string; setTerm
 }
 
 function Header() {
-  const [mobile, setMobile] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [term, setTerm] = useState('');
   const { totalItems } = useCart();
@@ -209,11 +208,10 @@ function Header() {
     ['Gatos', '/tienda?especie=gato'], ['Paseos y cuidados', '/paseos-y-cuidados'],
     ['Quiénes somos', '/quienes-somos'], ['Contacto', '/contacto'],
   ];
-  useEffect(() => { if (mobile) { document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = ''; }; } }, [mobile]);
   const submitSearch = () => {
     if (!term.trim()) return;
     navigate(`/tienda?busqueda=${encodeURIComponent(term)}`);
-    setSearchOpen(false); setMobile(false); scrollTop();
+    setSearchOpen(false); scrollTop();
   };
   return <>
     <TopBanner />
@@ -227,12 +225,10 @@ function Header() {
           <button aria-label="Buscar" onClick={() => setSearchOpen((v) => !v)} className="icon-button"><Search size={19} /></button>
           <button aria-label="Mi cuenta" onClick={() => navigate('/contacto')} className="icon-button hidden sm:flex"><CircleUserRound size={19} /></button>
           <Link aria-label="Carrito" to="/carrito" onClick={scrollTop} className="icon-button relative"><ShoppingCart size={20} />{totalItems > 0 && <span key={totalItems} className="cart-badge cart-badge-bounce">{totalItems}</span>}</Link>
-          <button aria-label="Abrir menú" onClick={() => setMobile((v) => !v)} className="icon-button xl:hidden">{mobile ? <X size={22} /> : <Menu size={22} />}</button>
         </div>
       </div>
       {searchOpen && <div className="border-t border-cream-300/60 bg-cream-100 px-5 py-3"><SearchBar term={term} setTerm={setTerm} onSubmit={submitSearch} onClose={() => setSearchOpen(false)} /></div>}
     </header>
-      {mobile && <div className="fixed inset-0 z-[100] xl:hidden" style={{ position: 'fixed' }}><div className="absolute inset-0" style={{ backgroundColor: '#132419' }} onClick={() => setMobile(false)} /><div className="absolute right-0 top-0 flex h-full w-80 max-w-[85vw] flex-col shadow-2xl drawer-enter" style={{ backgroundColor: '#fefcf9' }}><div className="flex items-center justify-between border-b border-cream-300 px-5 py-4"><Brand /><button aria-label="Cerrar menú" onClick={() => setMobile(false)} className="icon-button"><X size={22} /></button></div><nav className="grid gap-1 px-5 py-4">{navItems.map(([label, href]) => <Link key={label} to={href} onClick={() => { setMobile(false); scrollTop(); }} className="border-b border-cream-200 py-3 text-sm font-bold text-primary-700 transition hover:text-accent-700">{label}</Link>)}</nav></div></div>}
   </>;
 }
 
