@@ -4,6 +4,7 @@ import {
   Clock3, Heart, Instagram, MapPin, Menu, MessageCircle, Minus, PackageCheck,
   PawPrint, Phone, Plus, Search, ShoppingBag, ShoppingCart, Sparkles, Truck, X, Mail,
   Home as HomeIcon, ShieldCheck, Trash2, Utensils, Star, Send, Dog, Cat, Tag, ZoomIn,
+  Download, FileText,
 } from 'lucide-react';
 import {
   BrowserRouter, Link, NavLink, Route, Routes, useLocation, useNavigate, useParams,
@@ -370,16 +371,17 @@ function FreeShippingBar({ subtotal }: { subtotal: number }) {
 }
 
 function PaymentSuccess() {
-  const [order, setOrder] = useState<{ id: string; total: number; subtotal: number; envio: number; nombre: string; email: string; calle: string; numero: string; codigo_postal: string; localidad: string } | null>(null);
+  const [order, setOrder] = useState<{ id: string; total: number; subtotal: number; envio: number; nombre: string; email: string; calle: string; numero: string; codigo_postal: string; localidad: string; ticket_pdf_path: string | null } | null>(null);
   const [items, setItems] = useState<{ product_name: string; cantidad: number; precio_unitario: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const location = useLocation();
   const sessionId = new URLSearchParams(location.search).get('session_id');
   useEffect(() => {
     if (!sessionId) { setLoading(false); return; }
     supabase
       .from('orders')
-      .select('id, total, subtotal, envio, nombre, email, calle, numero, codigo_postal, localidad')
+      .select('id, total, subtotal, envio, nombre, email, calle, numero, codigo_postal, localidad, ticket_pdf_path')
       .eq('stripe_session_id', sessionId)
       .maybeSingle()
       .then(({ data }) => {
@@ -394,6 +396,20 @@ function PaymentSuccess() {
         setLoading(false);
       });
   }, [sessionId]);
+  const downloadTicket = async () => {
+    if (!order?.ticket_pdf_path) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-ticket?path=${encodeURIComponent(order.ticket_pdf_path)}&type=order`, { headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` } });
+      if (!res.ok) throw new Error('No se pudo descargar');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `ticket-${order.id.slice(0, 8)}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* best-effort */ }
+    setDownloading(false);
+  };
   if (loading) return <div className="flex min-h-[560px] items-center justify-center px-5 py-20"><div className="text-center text-secondary-500">Cargando detalles de tu pedido…</div></div>;
   if (!order) return <Confirmation icon={<PackageCheck size={42} />} title="¡Pago completado!" text="Gracias por tu compra. Hemos recibido tu pago correctamente y prepararemos tu pedido para entrega en Sevilla." action="Volver a la tienda" href="/tienda" />;
   return <div className="animate-fadeIn"><div className="mx-auto max-w-3xl px-5 py-12 lg:px-8">
@@ -407,6 +423,7 @@ function PaymentSuccess() {
       <h2 className="mb-3 flex items-center gap-2 font-serif text-lg text-primary-800"><MapPin size={18} className="text-accent-600" /> Dirección de entrega</h2>
       <p className="text-sm leading-6 text-secondary-700">{order.calle}, {order.numero}<br />{order.codigo_postal} {order.localidad}, Sevilla</p>
     </div>
+    {order.ticket_pdf_path && <div className="mt-6 flex justify-center"><button onClick={downloadTicket} disabled={downloading} className="button-dark flex items-center gap-2"><Download size={18} /> {downloading ? 'Descargando…' : 'Descargar ticket'}</button></div>}
     <div className="mt-8 flex justify-center gap-3"><Link to="/tienda" onClick={scrollTop} className="button-dark">Seguir comprando <ArrowRight size={17} /></Link><Link to="/" onClick={scrollTop} className="button-text">Volver al inicio</Link></div>
   </div></div>;
 }
@@ -427,10 +444,27 @@ function Services() {
 
 function Booking() {
   const [date, setDate] = useState(''); const [time, setTime] = useState(''); const [duracion, setDuracion] = useState<'30' | '60'>('30'); const [done, setDone] = useState(false); const [saving, setSaving] = useState(false); const [error, setError] = useState(''); const [hasSecondDog, setHasSecondDog] = useState(false);
+  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [ticketPath, setTicketPath] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const slots = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30'];
   const minDate = new Date().toISOString().split('T')[0];
-  const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!date || !time) { setError('Elige una fecha y una hora para continuar.'); return; } setSaving(true); setError(''); const data = new FormData(event.currentTarget); const payload = { nombre_dueno: data.get('nombre'), telefono: data.get('telefono'), email: data.get('email') || '', nombre_perro: data.get('nombre_perro'), raza: data.get('raza'), edad: data.get('edad'), nombre_perro_2: data.get('nombre_perro_2') || '', raza_2: data.get('raza_2') || '', edad_2: data.get('edad_2') || '', fecha: date, hora: time, duracion: duracion === '60' ? '60 min' : '30 min', observaciones: data.get('observaciones') || '' }; const { error: saveError } = await supabase.from('bookings').insert(payload); if (saveError) { setError('No hemos podido guardar la reserva. Escríbenos por WhatsApp y te ayudamos.'); setSaving(false); return; } try { await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-booking`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` }, body: JSON.stringify(payload) }); } catch { /* la notificación es best-effort: la reserva ya está guardada */ } setSaving(false); setDone(true); };
-  if (done) return <Confirmation icon={<CalendarDays size={42} />} title="¡Reserva confirmada!" text="Nos pondremos en contacto contigo para confirmar los detalles. Gracias por confiar en CabezaPerro." action="Volver al inicio" href="/" />;
+  const downloadBookingTicket = async () => {
+    if (!ticketPath) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-ticket?path=${encodeURIComponent(ticketPath)}&type=booking`, { headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` } });
+      if (!res.ok) throw new Error('No se pudo descargar');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `reserva-${bookingId?.slice(0, 8)}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* best-effort */ }
+    setDownloading(false);
+  };
+  const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!date || !time) { setError('Elige una fecha y una hora para continuar.'); return; } setSaving(true); setError(''); const data = new FormData(event.currentTarget); const payload = { nombre_dueno: data.get('nombre'), telefono: data.get('telefono'), email: data.get('email') || '', nombre_perro: data.get('nombre_perro'), raza: data.get('raza'), edad: data.get('edad'), nombre_perro_2: data.get('nombre_perro_2') || '', raza_2: data.get('raza_2') || '', edad_2: data.get('edad_2') || '', fecha: date, hora: time, duracion: duracion === '60' ? '60 min' : '30 min', observaciones: data.get('observaciones') || '' }; const { data: inserted, error: saveError } = await supabase.from('bookings').insert(payload).select('id').maybeSingle(); if (saveError || !inserted) { setError('No hemos podido guardar la reserva. Escríbenos por WhatsApp y te ayudamos.'); setSaving(false); return; } const newBookingId = (inserted as { id: string }).id; setBookingId(newBookingId); try { const notifyRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-booking`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` }, body: JSON.stringify({ ...payload, booking_id: newBookingId }) }); if (notifyRes.ok) { const notifyData = await notifyRes.json(); if (notifyData.ticket_pdf_path) setTicketPath(notifyData.ticket_pdf_path); } } catch { /* la notificación es best-effort: la reserva ya está guardada */ } setSaving(false); setDone(true); };
+  if (done) return <div className="flex min-h-[560px] items-center justify-center px-5 py-20"><div className="max-w-lg text-center"><span className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-cream-100 text-primary-700"><CalendarDays size={42} /></span><h1 className="mt-8 font-serif text-4xl text-primary-800">¡Reserva registrada!</h1><p className="mt-4 leading-7 text-secondary-700">Nos pondremos en contacto contigo para confirmar los detalles. Gracias por confiar en CabezaPerro.</p>{bookingId && <div className="mt-6 rounded-xl border border-cream-300 bg-cream-50 p-5"><div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wider text-secondary-500">Nº de reserva</span><span className="font-mono text-sm font-bold text-primary-800">#{bookingId.slice(0, 8).toUpperCase()}</span></div><div className="mt-3 flex items-center gap-2"><span className="inline-flex items-center gap-1.5 rounded-full bg-accent-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-accent-700"><Clock3 size={13} /> Pendiente de pago</span></div></div>}{ticketPath && <div className="mt-6 flex justify-center"><button onClick={downloadBookingTicket} disabled={downloading} className="button-dark flex items-center gap-2"><Download size={18} /> {downloading ? 'Descargando…' : 'Descargar ticket de reserva'}</button></div>}<div className="mt-8 flex justify-center gap-3"><Link to="/" onClick={scrollTop} className="button-dark">Volver al inicio <ArrowRight size={17} /></Link><Link to="/paseos-y-cuidados" onClick={scrollTop} className="button-text">Ver servicios</Link></div></div></div>;
   return <div className="animate-fadeIn"><div className="page-heading"><div className="mx-auto max-w-7xl px-5 lg:px-8"><SectionIntro eyebrow="Paseos y cuidados" title="Reserva un paseo" text="Elige el momento que mejor os venga y cuéntanos un poquito sobre tu compañero." /></div></div><div className="mx-auto max-w-7xl px-5 py-12 lg:px-8"><form onSubmit={submit} className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]"><div className="rounded-2xl bg-cream-100 p-6 md:p-8"><h2 className="font-serif text-2xl text-primary-800">Elige tu momento</h2><label className="field-label mt-6">Fecha</label><div className="relative"><CalendarDays size={17} className="pointer-events-none absolute left-3 top-3.5 text-accent-600" /><input type="date" min={minDate} value={date} onChange={(e) => { setDate(e.target.value); setTime(''); }} required className="field-input pl-10" /></div><h3 className="mt-8 text-sm font-bold text-primary-800">Duración del paseo</h3><div className="mt-3 grid grid-cols-2 gap-3"><button type="button" onClick={() => setDuracion('30')} className={`rounded-xl border p-4 text-left transition ${duracion === '30' ? 'border-primary-700 bg-primary-700 text-cream-50' : 'border-cream-300 bg-cream-50 text-primary-700 hover:border-accent-500'}`}><span className="block text-sm font-bold">Media hora</span><span className={`mt-1 block text-xs ${duracion === '30' ? 'text-cream-200' : 'text-secondary-500'}`}>6 €</span></button><button type="button" onClick={() => setDuracion('60')} className={`rounded-xl border p-4 text-left transition ${duracion === '60' ? 'border-primary-700 bg-primary-700 text-cream-50' : 'border-cream-300 bg-cream-50 text-primary-700 hover:border-accent-500'}`}><span className="block text-sm font-bold">Una hora</span><span className={`mt-1 block text-xs ${duracion === '60' ? 'text-cream-200' : 'text-secondary-500'}`}>11 €</span></button></div><h3 className="mt-8 text-sm font-bold text-primary-800">Horas disponibles {date && <span className="font-normal text-secondary-500">· {new Date(`${date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</span>}</h3><div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-5">{slots.map((slot) => <button type="button" key={slot} disabled={!date} onClick={() => setTime(slot)} className={`rounded-xl border px-2 py-3 text-sm font-bold transition ${time === slot ? 'border-primary-700 bg-primary-700 text-cream-50' : 'border-cream-300 bg-cream-50 text-primary-700 hover:border-accent-500 disabled:cursor-not-allowed disabled:opacity-40'}`}>{slot}</button>)}</div><div className="mt-8 rounded-xl border border-cream-300 bg-cream-50 p-4 text-xs leading-5 text-secondary-600"><Clock3 size={15} className="mb-1 text-accent-600" /> Las reservas se confirman personalmente por teléfono. Te responderemos lo antes posible.</div></div><div className="rounded-2xl border border-cream-300 p-6 md:p-8"><h2 className="font-serif text-2xl text-primary-800">Cuéntanos sobre él</h2><div className="mt-6 grid gap-4 sm:grid-cols-2"><Field label="Nombre del perro" name="nombre_perro" required /><Field label="Raza" name="raza" required /><Field label="Edad" name="edad" placeholder="Ej. 3 años" required /><Field label="Tu nombre" name="nombre" required /><Field label="Teléfono" name="telefono" type="tel" required /><Field label="Email" name="email" type="email" required /><div className="sm:col-span-2"><label className="field-label">Observaciones</label><textarea name="observaciones" rows={4} className="field-input resize-none" placeholder="Carácter, necesidades, indicaciones…" /></div></div><div className="mt-6 flex items-center gap-3 border-t border-cream-200 pt-5"><label className="flex cursor-pointer items-center gap-3 text-sm font-bold text-primary-800"><input type="checkbox" checked={hasSecondDog} onChange={(e) => setHasSecondDog(e.target.checked)} className="h-4 w-4 rounded accent-primary-700" /> ¿Vais con un segundo perro? <span className="font-normal text-secondary-500">(+5 €)</span></label></div>{hasSecondDog && <div className="mt-4 grid gap-4 rounded-xl bg-cream-100 p-5 sm:grid-cols-3"><Field label="Nombre del 2º perro" name="nombre_perro_2" /><Field label="Raza" name="raza_2" /><Field label="Edad" name="edad_2" placeholder="Ej. 5 años" /></div>}{error && <p className="mt-5 rounded-xl bg-error-50 p-4 text-sm text-error-700">{error}</p>}<button disabled={saving} className="button-dark mt-6 w-full">{saving ? 'Guardando reserva…' : 'Confirmar reserva'} <ArrowRight size={17} /></button></div></form></div></div>;
 }
 
