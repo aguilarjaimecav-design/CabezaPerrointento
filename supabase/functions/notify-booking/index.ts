@@ -345,14 +345,21 @@ Deno.serve(async (req: Request) => {
       attachment = { content: base64, filename: `reserva-${bookingId.substring(0, 8)}.pdf` };
 
       // Upload to storage
-      await fetch(`${supabaseUrl}/storage/v1/object/tickets/${pdfPath}`, {
+      const encodedPath = pdfPath.split("/").map(encodeURIComponent).join("/");
+      const uploadRes = await fetch(`${supabaseUrl}/storage/v1/object/tickets/${encodedPath}`, {
         method: "POST",
         headers: {
+          apikey: supabaseServiceKey,
           Authorization: `Bearer ${supabaseServiceKey}`,
           "Content-Type": "application/pdf",
+          "x-upsert": "true",
         },
         body: pdfBytes,
       });
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        console.error("Storage upload failed:", errText);
+      }
 
       // Save path to DB
       await fetch(`${supabaseUrl}/rest/v1/bookings?id=eq.${bookingId}`, {

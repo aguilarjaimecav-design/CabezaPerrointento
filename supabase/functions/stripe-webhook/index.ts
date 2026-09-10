@@ -263,14 +263,21 @@ async function generateOrderPdf(order: OrderRow, items: OrderItemRow[], orderId:
 }
 
 async function uploadToStorage(supabaseUrl: string, serviceKey: string, path: string, pdfBytes: Uint8Array): Promise<boolean> {
-  const res = await fetch(`${supabaseUrl}/storage/v1/object/tickets/${path}`, {
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  const res = await fetch(`${supabaseUrl}/storage/v1/object/tickets/${encodedPath}`, {
     method: "POST",
     headers: {
+      apikey: serviceKey,
       Authorization: `Bearer ${serviceKey}`,
       "Content-Type": "application/pdf",
+      "x-upsert": "true",
     },
     body: pdfBytes,
   });
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("Storage upload failed:", errText);
+  }
   return res.ok;
 }
 
