@@ -231,8 +231,8 @@ function Header() {
         </div>
       </div>
       {searchOpen && <div className="border-t border-cream-300/60 bg-cream-100 px-5 py-3"><SearchBar term={term} setTerm={setTerm} onSubmit={submitSearch} onClose={() => setSearchOpen(false)} /></div>}
-      {mobile && <div className="fixed inset-0 z-[100] xl:hidden"><div className="absolute inset-0 bg-primary-900" onClick={() => setMobile(false)} /><div className="absolute right-0 top-0 flex h-full w-80 max-w-[85vw] flex-col bg-cream-50 shadow-soft drawer-enter"><div className="flex items-center justify-between border-b border-cream-300 px-5 py-4"><Brand /><button aria-label="Cerrar menú" onClick={() => setMobile(false)} className="icon-button"><X size={22} /></button></div><nav className="grid gap-1 px-5 py-4">{navItems.map(([label, href]) => <Link key={label} to={href} onClick={() => { setMobile(false); scrollTop(); }} className="border-b border-cream-200 py-3 text-sm font-bold text-primary-700 transition hover:text-accent-700">{label}</Link>)}</nav></div></div>}
     </header>
+      {mobile && <div className="fixed inset-0 z-[100] xl:hidden" style={{ position: 'fixed' }}><div className="absolute inset-0" style={{ backgroundColor: '#132419' }} onClick={() => setMobile(false)} /><div className="absolute right-0 top-0 flex h-full w-80 max-w-[85vw] flex-col shadow-2xl drawer-enter" style={{ backgroundColor: '#fefcf9' }}><div className="flex items-center justify-between border-b border-cream-300 px-5 py-4"><Brand /><button aria-label="Cerrar menú" onClick={() => setMobile(false)} className="icon-button"><X size={22} /></button></div><nav className="grid gap-1 px-5 py-4">{navItems.map(([label, href]) => <Link key={label} to={href} onClick={() => { setMobile(false); scrollTop(); }} className="border-b border-cream-200 py-3 text-sm font-bold text-primary-700 transition hover:text-accent-700">{label}</Link>)}</nav></div></div>}
   </>;
 }
 
