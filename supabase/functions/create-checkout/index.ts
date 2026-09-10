@@ -33,7 +33,7 @@ const ORIGIN_ADDRESS = "Calle Lictores, 41018 Sevilla, España";
 const ORS_API_KEY = Deno.env.get("ORS_API_KEY") ?? "";
 const ORS_BASE = "https://api.openrouteservice.org";
 
-async function geocode(address: string): Promise<[number, number]> {
+async function geocode(address: string): Promise<GeocodeResult> {
   const url = `${ORS_BASE}/geocode/search?text=${encodeURIComponent(address)}&size=1`;
   const res = await fetch(url, {
     headers: { Authorization: ORS_API_KEY, Accept: "application/json" },
@@ -41,14 +41,17 @@ async function geocode(address: string): Promise<[number, number]> {
   if (!res.ok) throw new Error(`Geocodificación fallida (${res.status})`);
   const data = await res.json();
   if (!data.features || data.features.length === 0) throw new Error("No se encontró la dirección de entrega.");
-  return data.features[0].geometry.coordinates as [number, number];
+  const [lng, lat] = data.features[0].geometry.coordinates;
+  const county = data.features[0].properties?.county ?? "";
+  const municipality = data.features[0].properties?.municipality ?? "";
+  return { lat, lng, county, municipality };
 }
 
-async function getDrivingDistance(origin: [number, number], dest: [number, number]): Promise<number> {
+async function getDrivingDistance(origin: GeocodeResult, dest: GeocodeResult): Promise<number> {
   const res = await fetch(`${ORS_BASE}/v2/directions/driving-car`, {
     method: "POST",
     headers: { Authorization: ORS_API_KEY, "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ coordinates: [origin, dest], units: "km" }),
+    body: JSON.stringify({ coordinates: [[origin.lng, origin.lat], [dest.lng, dest.lat]], units: "km" }),
   });
   if (!res.ok) throw new Error(`Cálculo de ruta fallido (${res.status})`);
   const data = await res.json();
@@ -56,10 +59,22 @@ async function getDrivingDistance(origin: [number, number], dest: [number, numbe
   return data.routes[0].summary.distance;
 }
 
-function calcularTarifa(distanciaKm: number, subtotal: number): { envio: number; disponible: boolean } {
-  if (distanciaKm < 6) return { envio: subtotal >= 25 ? 0 : 2.0, disponible: true };
-  if (distanciaKm <= 9) return { envio: subtotal >= 25 ? 2.9 : 4.9, disponible: true };
-  if (distanciaKm <= 18) return { envio: subtotal >= 25 ? 4.9 : 6.9, disponible: true };
+const SEVILLA_CP_RANGE = new Set(
+  Array.from({ length: 20 }, (_, i) => `410${String(i + 1).padStart(2, "0")}`),
+);
+
+function esSevillaCapital(codigoPostal: string, localidad: string): boolean {
+  const cp = codigoPostal.trim();
+  const loc = localidad.trim().toLowerCase();
+  if (SEVILLA_CP_RANGE.has(cp)) return true;
+  if (loc === "sevilla") return true;
+  return false;
+}
+
+function calcularTarifaProvincia(distanciaKm: number, subtotal: number): { envio: number; disponible: boolean } {
+  if (distanciaKm <= 6) return { envio: subtotal > 25 ? 0 : 2.0, disponible: true };
+  if (distanciaKm <= 9) return { envio: subtotal > 25 ? 2.9 : 4.9, disponible: true };
+  if (distanciaKm <= 18) return { envio: subtotal > 25 ? 4.9 : 6.9, disponible: true };
   return { envio: 0, disponible: false };
 }
 
@@ -178,7 +193,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Calcular envío basado en distancia por carretera
+    // Calcular envío: Sevilla Capital vs Sevilla Provincia
     if (!cliente.localidad) {
       return new Response(
         JSON.stringify({ error: "Falta la localidad para calcular el envío." }),
@@ -186,25 +201,53 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!ORS_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "El servicio de cálculo de envío no está configurado." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const destAddress = `${cliente.calle} ${cliente.numero}, ${cliente.codigo_postal} ${cliente.localidad}, Sevilla, España`;
-    const originCoords = await geocode(ORIGIN_ADDRESS);
-    const destCoords = await geocode(destAddress);
-    const distanciaKm = await getDrivingDistance(originCoords, destCoords);
     const subtotalTrasDescuento = Math.max(0, subtotal - descuento);
-    const { envio, disponible } = calcularTarifa(distanciaKm, subtotalTrasDescuento);
 
-    if (!disponible) {
-      return new Response(
-        JSON.stringify({ error: "Lo sentimos, no realizamos envíos a domicilio a destinos a más de 18 km de nuestra sede. Contáctanos por WhatsApp para alternativas." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    let envio = 0;
+    let disponible = true;
+    let distanciaKm = 0;
+    let zona = "sevilla_capital";
+
+    if (esSevillaCapital(cliente.codigo_postal, cliente.localidad)) {
+      // Sevilla Capital: sin cálculo de kilómetros
+      envio = subtotalTrasDescuento > 25 ? 0 : 2.0;
+    } else {
+      // Sevilla Provincia: calcular distancia por carretera
+      if (!ORS_API_KEY) {
+        return new Response(
+          JSON.stringify({ error: "El servicio de cálculo de envío no está configurado." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const destAddress = `${cliente.calle} ${cliente.numero}, ${cliente.codigo_postal} ${cliente.localidad}, Sevilla, España`;
+      const originCoords = await geocode(ORIGIN_ADDRESS);
+      const destCoords = await geocode(destAddress);
+      distanciaKm = await getDrivingDistance(originCoords, destCoords);
+
+      const enProvinciaSevilla =
+        destCoords.county?.toLowerCase().includes("sevilla") ||
+        destCoords.municipality?.toLowerCase().includes("sevilla") ||
+        cliente.codigo_postal.trim().startsWith("41");
+
+      if (!enProvinciaSevilla) {
+        return new Response(
+          JSON.stringify({ error: "Lo sentimos, actualmente solo realizamos entregas en la provincia de Sevilla. Contáctanos por WhatsApp para alternativas." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      zona = "sevilla_provincia";
+      const tarifa = calcularTarifaProvincia(distanciaKm, subtotalTrasDescuento);
+      envio = tarifa.envio;
+      disponible = tarifa.disponible;
+
+      if (!disponible) {
+        return new Response(
+          JSON.stringify({ error: "Lo sentimos, no realizamos envíos a domicilio a destinos a más de 18 km de nuestra sede. Contáctanos por WhatsApp para alternativas." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
     if (envio > 0) {
@@ -214,7 +257,9 @@ Deno.serve(async (req: Request) => {
           currency: "eur",
           unit_amount: Math.round(envio * 100),
           product_data: {
-            name: `Envío a domicilio (${Math.round(distanciaKm * 100) / 100} km)`,
+            name: zona === "sevilla_capital"
+              ? "Envío a domicilio (Sevilla Capital)"
+              : `Envío a domicilio (${Math.round(distanciaKm * 100) / 100} km)`,
           },
         },
       });

@@ -21,6 +21,22 @@ interface ShippingRequest {
 interface GeocodeResult {
   lat: number;
   lng: number;
+  county: string;
+  municipality: string;
+}
+
+const SEVILLA_CP_PREFIX = "410";
+const SEVILLA_CP_RANGE = new Set(
+  Array.from({ length: 20 }, (_, i) => `410${String(i + 1).padStart(2, "0")}`),
+);
+
+function esSevillaCapital(codigoPostal: string, localidad: string): boolean {
+  const cp = codigoPostal.trim();
+  const loc = localidad.trim().toLowerCase();
+  if (SEVILLA_CP_RANGE.has(cp)) return true;
+  if (loc === "sevilla") return true;
+  if (cp.startsWith(SEVILLA_CP_PREFIX) && loc === "sevilla") return true;
+  return false;
 }
 
 async function geocode(address: string): Promise<GeocodeResult> {
@@ -36,7 +52,9 @@ async function geocode(address: string): Promise<GeocodeResult> {
     throw new Error("No se encontró la dirección.");
   }
   const [lng, lat] = data.features[0].geometry.coordinates;
-  return { lat, lng };
+  const county = data.features[0].properties?.county ?? "";
+  const municipality = data.features[0].properties?.municipality ?? "";
+  return { lat, lng, county, municipality };
 }
 
 async function getDrivingDistance(origin: GeocodeResult, dest: GeocodeResult): Promise<number> {
@@ -67,18 +85,18 @@ async function getDrivingDistance(origin: GeocodeResult, dest: GeocodeResult): P
   return data.routes[0].summary.distance;
 }
 
-function calcularTarifa(distanciaKm: number, subtotal: number): {
+function calcularTarifaProvincia(distanciaKm: number, subtotal: number): {
   envio: number;
   disponible: boolean;
 } {
-  if (distanciaKm < 6) {
-    return { envio: subtotal >= 25 ? 0 : 2.0, disponible: true };
+  if (distanciaKm <= 6) {
+    return { envio: subtotal > 25 ? 0 : 2.0, disponible: true };
   }
   if (distanciaKm <= 9) {
-    return { envio: subtotal >= 25 ? 2.9 : 4.9, disponible: true };
+    return { envio: subtotal > 25 ? 2.9 : 4.9, disponible: true };
   }
   if (distanciaKm <= 18) {
-    return { envio: subtotal >= 25 ? 4.9 : 6.9, disponible: true };
+    return { envio: subtotal > 25 ? 4.9 : 6.9, disponible: true };
   }
   return { envio: 0, disponible: false };
 }
@@ -106,16 +124,51 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const destAddress = `${calle} ${numero}, ${codigo_postal} ${localidad}, Sevilla, España`;
+    const sub = Number(subtotal);
 
+    // 1. Determinar si pertenece a Sevilla Capital
+    if (esSevillaCapital(codigo_postal, localidad)) {
+      const envio = sub > 25 ? 0 : 2.0;
+      return new Response(
+        JSON.stringify({
+          zona: "sevilla_capital",
+          distancia_km: 0,
+          envio: Math.round(envio * 100) / 100,
+          disponible: true,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // 2. No es Sevilla Capital → calcular distancia y aplicar tarifa de provincia
+    const destAddress = `${calle} ${numero}, ${codigo_postal} ${localidad}, Sevilla, España`;
     const originCoords = await geocode(ORIGIN_ADDRESS);
     const destCoords = await geocode(destAddress);
     const distanciaKm = await getDrivingDistance(originCoords, destCoords);
 
-    const { envio, disponible } = calcularTarifa(distanciaKm, Number(subtotal));
+    // Verificar que el destino está dentro de la provincia de Sevilla
+    const enProvinciaSevilla =
+      destCoords.county?.toLowerCase().includes("sevilla") ||
+      destCoords.municipality?.toLowerCase().includes("sevilla") ||
+      codigo_postal.trim().startsWith("41");
+
+    if (!enProvinciaSevilla) {
+      return new Response(
+        JSON.stringify({
+          zona: "fuera_provincia",
+          distancia_km: Math.round(distanciaKm * 100) / 100,
+          envio: 0,
+          disponible: false,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const { envio, disponible } = calcularTarifaProvincia(distanciaKm, sub);
 
     return new Response(
       JSON.stringify({
+        zona: "sevilla_provincia",
         distancia_km: Math.round(distanciaKm * 100) / 100,
         envio: Math.round(envio * 100) / 100,
         disponible,
