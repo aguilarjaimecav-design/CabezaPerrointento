@@ -405,7 +405,10 @@ function PaymentSuccess() {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `ticket-${order.id.slice(0, 8)}.pdf`; a.click();
+      a.href = url; a.download = `ticket-${order.id.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch { /* best-effort */ }
     setDownloading(false);
@@ -458,7 +461,10 @@ function Booking() {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `reserva-${bookingId?.slice(0, 8)}.pdf`; a.click();
+      a.href = url; a.download = `reserva-${bookingId?.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch { /* best-effort */ }
     setDownloading(false);

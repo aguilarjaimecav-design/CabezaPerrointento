@@ -34,8 +34,9 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
     const res = await fetch(
-      `${supabaseUrl}/storage/v1/object/tickets/${encodeURIComponent(path)}`,
+      `${supabaseUrl}/storage/v1/object/tickets/${encodedPath}`,
       {
         headers: {
           Authorization: `Bearer ${supabaseServiceKey}`,
