@@ -286,40 +286,81 @@ Deno.serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const adminHeaders = {
+      apikey: supabaseServiceKey,
+      Authorization: `Bearer ${supabaseServiceKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    };
 
-    // Generate PDF if we have a booking_id
+    // Insert booking using service role key (bypasses RLS)
+    const insertBody = {
+      nombre_dueno: b.nombre_dueno,
+      telefono: b.telefono,
+      email: b.email || "",
+      nombre_perro: b.nombre_perro,
+      raza: b.raza || "",
+      edad: b.edad || "",
+      nombre_perro_2: b.nombre_perro_2 || "",
+      raza_2: b.raza_2 || "",
+      edad_2: b.edad_2 || "",
+      fecha: b.fecha,
+      hora: b.hora,
+      duracion: b.duracion || null,
+      observaciones: b.observaciones || "",
+    };
+
+    const insertRes = await fetch(`${supabaseUrl}/rest/v1/bookings`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify(insertBody),
+    });
+
+    if (!insertRes.ok) {
+      const errText = await insertRes.text();
+      return new Response(
+        JSON.stringify({ error: `No se pudo guardar la reserva: ${errText}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const insertedRows: { id: string }[] = await insertRes.json();
+    const bookingId = insertedRows[0]?.id;
+
+    if (!bookingId) {
+      return new Response(
+        JSON.stringify({ error: "No se pudo obtener el ID de la reserva." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Generate PDF
     let pdfPath: string | null = null;
     let attachment: { content: string; filename: string } | undefined;
 
-    if (b.booking_id) {
-      try {
-        const pdfBytes = await generateBookingPdf(b, b.booking_id);
-        const base64 = btoa(String.fromCharCode(...pdfBytes));
-        pdfPath = `bookings/${b.booking_id}.pdf`;
-        attachment = { content: base64, filename: `reserva-${b.booking_id.substring(0, 8)}.pdf` };
+    try {
+      const pdfBytes = await generateBookingPdf(b, bookingId);
+      const base64 = btoa(String.fromCharCode(...pdfBytes));
+      pdfPath = `bookings/${bookingId}.pdf`;
+      attachment = { content: base64, filename: `reserva-${bookingId.substring(0, 8)}.pdf` };
 
-        // Upload to storage
-        await fetch(`${supabaseUrl}/storage/v1/object/tickets/${pdfPath}`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${supabaseServiceKey}`,
-            "Content-Type": "application/pdf",
-          },
-          body: pdfBytes,
-        });
+      // Upload to storage
+      await fetch(`${supabaseUrl}/storage/v1/object/tickets/${pdfPath}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${supabaseServiceKey}`,
+          "Content-Type": "application/pdf",
+        },
+        body: pdfBytes,
+      });
 
-        // Save path to DB
-        await fetch(`${supabaseUrl}/rest/v1/bookings?id=eq.${b.booking_id}`, {
-          method: "PATCH",
-          headers: {
-            apikey: supabaseServiceKey,
-            Authorization: `Bearer ${supabaseServiceKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ ticket_pdf_path: pdfPath }),
-        });
-      } catch { /* PDF generation is best-effort; emails still go out */ }
-    }
+      // Save path to DB
+      await fetch(`${supabaseUrl}/rest/v1/bookings?id=eq.${bookingId}`, {
+        method: "PATCH",
+        headers: adminHeaders,
+        body: JSON.stringify({ ticket_pdf_path: pdfPath }),
+      });
+    } catch { /* PDF generation is best-effort; emails still go out */ }
 
     // Send emails
     const emails: Promise<Response>[] = [
@@ -356,7 +397,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, booking_id: b.booking_id, ticket_pdf_path: pdfPath }),
+      JSON.stringify({ success: true, booking_id: bookingId, ticket_pdf_path: pdfPath }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
