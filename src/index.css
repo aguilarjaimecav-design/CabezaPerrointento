@@ -19,7 +19,7 @@ a { color: inherit; text-decoration: none; }
 
 @layer components {
   .eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.22em] text-accent-700; }
-  .hero-section { @apply overflow-x-hidden bg-primary-700; }
+  .hero-section { @apply overflow-hidden bg-primary-700; }
   .page-heading { @apply border-b border-cream-300/70 bg-cream-100 py-16 md:py-20; }
   .section-space { @apply py-20 md:py-28; }
   .icon-button { @apply relative flex h-10 w-10 items-center justify-center rounded-full text-primary-700 transition hover:bg-cream-100 hover:text-accent-700; }
