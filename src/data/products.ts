@@ -1,12 +1,12 @@
 import { supabase } from '@/lib/supabase';
 import { Categoria, NutrienteInfo, Product } from '@/types';
 
-export const CATEGORIAS: { slug: Categoria; nombre: string; especie: 'perro' | 'gato' }[] = [
+export const CATEGORIAS: { slug: Categoria; nombre: string; especie: 'perro' | 'gato' | 'ambas' }[] = [
   { slug: 'pienso-perros', nombre: 'Pienso para perros', especie: 'perro' },
   { slug: 'pienso-gatos', nombre: 'Pienso para gatos', especie: 'gato' },
   { slug: 'humeda-perros', nombre: 'Comida húmeda para perros', especie: 'perro' },
   { slug: 'humeda-gatos', nombre: 'Comida húmeda para gatos', especie: 'gato' },
-  { slug: 'Complementos', nombre: 'Complementos', especie: 'gato' },
+  { slug: 'Complementos', nombre: 'Complementos', especie: 'ambas' },
 ];
 
 interface ProductRow {
