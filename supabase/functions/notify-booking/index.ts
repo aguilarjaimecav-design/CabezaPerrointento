@@ -308,6 +308,7 @@ Deno.serve(async (req: Request) => {
       hora: b.hora,
       duracion: b.duracion || null,
       observaciones: b.observaciones || "",
+      autoriza_fotos: !!b.autoriza_fotos,
     };
 
     const insertRes = await fetch(`${supabaseUrl}/rest/v1/bookings`, {
