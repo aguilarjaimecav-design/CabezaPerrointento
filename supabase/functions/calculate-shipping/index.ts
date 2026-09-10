@@ -90,13 +90,13 @@ function calcularTarifaProvincia(distanciaKm: number, subtotal: number): {
   disponible: boolean;
 } {
   if (distanciaKm <= 6) {
-    return { envio: subtotal > 25 ? 0 : 2.0, disponible: true };
+    return { envio: subtotal >= 25 ? 0 : 2.0, disponible: true };
   }
   if (distanciaKm <= 9) {
-    return { envio: subtotal > 25 ? 2.9 : 4.9, disponible: true };
+    return { envio: subtotal >= 25 ? 2.9 : 4.9, disponible: true };
   }
   if (distanciaKm <= 18) {
-    return { envio: subtotal > 25 ? 4.9 : 6.9, disponible: true };
+    return { envio: subtotal >= 25 ? 4.9 : 6.9, disponible: true };
   }
   return { envio: 0, disponible: false };
 }
@@ -128,7 +128,7 @@ Deno.serve(async (req: Request) => {
 
     // 1. Determinar si pertenece a Sevilla Capital
     if (esSevillaCapital(codigo_postal, localidad)) {
-      const envio = sub > 25 ? 0 : 2.0;
+      const envio = sub >= 25 ? 0 : 2.0;
       return new Response(
         JSON.stringify({
           zona: "sevilla_capital",
