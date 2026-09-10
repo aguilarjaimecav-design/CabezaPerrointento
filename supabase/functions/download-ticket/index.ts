@@ -26,7 +26,7 @@ Deno.serve(async (req: Request) => {
     // Validate path format to prevent traversal
     if (path.includes("..") || !path.startsWith(`${type}s/`)) {
       return new Response(
-        JSON.stringify({ error: "Ruta no válida." }),
+        JSON.stringify({ error: `Ruta no válida: ${path}` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -34,24 +34,36 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+    // Encode each path segment individually (keep slashes)
     const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-    const res = await fetch(
+
+    // Use the Supabase Storage REST API to download the object
+    const downloadRes = await fetch(
       `${supabaseUrl}/storage/v1/object/tickets/${encodedPath}`,
       {
         headers: {
+          apikey: supabaseServiceKey,
           Authorization: `Bearer ${supabaseServiceKey}`,
         },
       },
     );
 
-    if (!res.ok) {
+    if (!downloadRes.ok) {
+      const errText = await downloadRes.text();
       return new Response(
-        JSON.stringify({ error: "No se pudo encontrar el ticket." }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: `Storage devolvió ${downloadRes.status}: ${errText}` }),
+        { status: downloadRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const pdfBytes = await res.arrayBuffer();
+    const pdfBytes = await downloadRes.arrayBuffer();
+    if (pdfBytes.byteLength === 0) {
+      return new Response(
+        JSON.stringify({ error: "El archivo está vacío." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const filename = path.split("/").pop() || "ticket.pdf";
 
     return new Response(pdfBytes, {
@@ -60,6 +72,7 @@ Deno.serve(async (req: Request) => {
         ...corsHeaders,
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": String(pdfBytes.byteLength),
       },
     });
   } catch (err) {
