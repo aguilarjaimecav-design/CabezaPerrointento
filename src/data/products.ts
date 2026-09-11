@@ -99,6 +99,17 @@ export async function fetchFeaturedProducts(limit = 4): Promise<Product[]> {
   return (data as ProductRow[]).map(rowToProduct);
 }
 
+export async function fetchProductsByIds(ids: string[]): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .in('id', ids);
+
+  if (error || !data) return [];
+  const products = (data as ProductRow[]).map(rowToProduct);
+  return ids.map((id) => products.find((p) => p.id === id)).filter((p): p is Product => p !== undefined);
+}
+
 export function categoriaNombre(categoria: Categoria): string {
   return CATEGORIAS.find((c) => c.slug === categoria)?.nombre ?? categoria;
 }
