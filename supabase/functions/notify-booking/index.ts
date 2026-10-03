@@ -1,5 +1,4 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -116,123 +115,6 @@ function buildCustomerHtml(b: BookingData): string {
 </body></html>`;
 }
 
-async function generateBookingPdf(b: BookingData, bookingId: string): Promise<Uint8Array> {
-  const doc = await PDFDocument.create();
-  const font = await doc.embedFont(StandardFonts.Helvetica);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const page = doc.addPage([595, 842]);
-  const { width, height } = page.getSize();
-  const green = rgb(0.24, 0.42, 0.29);
-  const gold = rgb(0.78, 0.54, 0.18);
-  const dark = rgb(0.23, 0.18, 0.11);
-  const gray = rgb(0.54, 0.49, 0.42);
-  const lightGray = rgb(0.91, 0.86, 0.78);
-  const orange = rgb(0.85, 0.45, 0.15);
-
-  let y = height - 50;
-
-  // Header
-  page.drawText("Cabeza", { x: 50, y, size: 24, font: bold, color: green });
-  page.drawText("Perro", { x: 50 + bold.widthOfTextAtSize("Cabeza", 24), y, size: 24, font: bold, color: gold });
-  y -= 20;
-  page.drawText("Ticket de reserva", { x: 50, y, size: 11, font, color: gray });
-  y -= 30;
-
-  // Booking info
-  const fechaCreacion = new Date().toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" });
-  page.drawText(`Reserva Nº: ${bookingId.substring(0, 8).toUpperCase()}`, { x: 50, y, size: 12, font: bold, color: dark });
-  y -= 18;
-  page.drawText(`Fecha de creación: ${fechaCreacion}`, { x: 50, y, size: 10, font, color: gray });
-  y -= 22;
-
-  // Status badge
-  page.drawRectangle({ x: 50, y: y - 4, width: 160, height: 22, color: orange, borderRadius: 4 });
-  page.drawText("PENDIENTE DE PAGO", { x: 58, y, size: 10, font: bold, color: rgb(1, 1, 1) });
-  y -= 40;
-
-  page.drawLine({ start: { x: 50, y }, end: { x: width - 50, y }, thickness: 1, color: lightGray });
-  y -= 25;
-
-  // Owner data
-  page.drawText("Datos del propietario", { x: 50, y, size: 12, font: bold, color: green });
-  y -= 18;
-  page.drawText(`Nombre: ${b.nombre_dueno}`, { x: 50, y, size: 10, font, color: dark });
-  y -= 14;
-  page.drawText(`Teléfono: ${b.telefono}`, { x: 50, y, size: 10, font, color: dark });
-  y -= 14;
-  if (b.email) {
-    page.drawText(`Email: ${b.email}`, { x: 50, y, size: 10, font, color: dark });
-    y -= 14;
-  }
-  y -= 15;
-
-  // Dog data
-  page.drawText("Datos del perro", { x: 50, y, size: 12, font: bold, color: green });
-  y -= 18;
-  page.drawText(`Nombre: ${b.nombre_perro}`, { x: 50, y, size: 10, font, color: dark });
-  y -= 14;
-  page.drawText(`Raza: ${b.raza || "—"}`, { x: 50, y, size: 10, font, color: dark });
-  y -= 14;
-  page.drawText(`Edad: ${b.edad || "—"}`, { x: 50, y, size: 10, font, color: dark });
-  y -= 20;
-
-  if (b.nombre_perro_2) {
-    page.drawText("Segundo perro", { x: 50, y, size: 12, font: bold, color: green });
-    y -= 18;
-    page.drawText(`Nombre: ${b.nombre_perro_2}`, { x: 50, y, size: 10, font, color: dark });
-    y -= 14;
-    page.drawText(`Raza: ${b.raza_2 || "—"}`, { x: 50, y, size: 10, font, color: dark });
-    y -= 14;
-    page.drawText(`Edad: ${b.edad_2 || "—"}`, { x: 50, y, size: 10, font, color: dark });
-    y -= 20;
-  }
-
-  page.drawLine({ start: { x: 50, y }, end: { x: width - 50, y }, thickness: 1, color: lightGray });
-  y -= 25;
-
-  // Reservation details
-  const fechaFmt = fmtFecha(b.fecha);
-  page.drawText("Detalles de la reserva", { x: 50, y, size: 12, font: bold, color: green });
-  y -= 18;
-  page.drawText(`Fecha: ${fechaFmt}`, { x: 50, y, size: 10, font, color: dark });
-  y -= 14;
-  page.drawText(`Hora: ${b.hora}`, { x: 50, y, size: 10, font, color: dark });
-  y -= 14;
-  if (b.duracion) {
-    page.drawText(`Duración: ${b.duracion}`, { x: 50, y, size: 10, font, color: dark });
-    y -= 14;
-  }
-
-  if (b.observaciones) {
-    y -= 10;
-    page.drawText("Observaciones:", { x: 50, y, size: 10, font: bold, color: dark });
-    y -= 14;
-    const obsLines = b.observaciones.match(/.{1,70}/g) || [b.observaciones];
-    for (const line of obsLines) {
-      page.drawText(line, { x: 50, y, size: 10, font, color: dark });
-      y -= 14;
-    }
-  }
-
-  y -= 15;
-  page.drawLine({ start: { x: 50, y }, end: { x: width - 50, y }, thickness: 1, color: lightGray });
-  y -= 25;
-
-  // Price
-  const precio = b.duracion === "60 min" ? "11 €" : "6 €";
-  const precioExtra = b.nombre_perro_2 ? " + 5 € (segundo perro)" : "";
-  page.drawText("Precio de la reserva", { x: 50, y, size: 12, font: bold, color: green });
-  y -= 18;
-  page.drawText(`${precio}${precioExtra}`, { x: 50, y, size: 14, font: bold, color: dark });
-  y -= 20;
-  page.drawText("Estado: PENDIENTE DE PAGO", { x: 50, y, size: 10, font: bold, color: orange });
-
-  // Footer
-  page.drawText(`CabezaPerro · Sevilla · ${STORE_EMAIL} · ${STORE_PHONE}`, { x: 50, y: 30, size: 9, font, color: gray });
-
-  return new Uint8Array(await doc.save());
-}
-
 async function sendEmailWithAttachment(
   to: string,
   subject: string,
@@ -335,41 +217,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Generate PDF
-    let pdfPath: string | null = null;
-    let attachment: { content: string; filename: string } | undefined;
-
-    try {
-      const pdfBytes = await generateBookingPdf(b, bookingId);
-      const base64 = btoa(String.fromCharCode(...pdfBytes));
-      pdfPath = `bookings/${bookingId}.pdf`;
-      attachment = { content: base64, filename: `reserva-${bookingId.substring(0, 8)}.pdf` };
-
-      // Upload to storage
-      const encodedPath = pdfPath.split("/").map(encodeURIComponent).join("/");
-      const uploadRes = await fetch(`${supabaseUrl}/storage/v1/object/tickets/${encodedPath}`, {
-        method: "POST",
-        headers: {
-          apikey: supabaseServiceKey,
-          Authorization: `Bearer ${supabaseServiceKey}`,
-          "Content-Type": "application/pdf",
-          "x-upsert": "true",
-        },
-        body: pdfBytes,
-      });
-      if (!uploadRes.ok) {
-        const errText = await uploadRes.text();
-        console.error("Storage upload failed:", errText);
-      }
-
-      // Save path to DB
-      await fetch(`${supabaseUrl}/rest/v1/bookings?id=eq.${bookingId}`, {
-        method: "PATCH",
-        headers: adminHeaders,
-        body: JSON.stringify({ ticket_pdf_path: pdfPath }),
-      });
-    } catch { /* PDF generation is best-effort; emails still go out */ }
-
     // Send emails
     const emails: Promise<Response>[] = [
       sendEmailWithAttachment(
@@ -377,7 +224,6 @@ Deno.serve(async (req: Request) => {
         `Nueva reserva de paseo — ${b.nombre_dueno} (${b.fecha} ${b.hora})`,
         buildOwnerHtml(b),
         resendApiKey,
-        attachment,
       ),
     ];
 
@@ -388,7 +234,6 @@ Deno.serve(async (req: Request) => {
           "Confirmación de tu reserva de paseo — CabezaPerro",
           buildCustomerHtml(b),
           resendApiKey,
-          attachment,
         ),
       );
     }
@@ -405,7 +250,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, booking_id: bookingId, ticket_pdf_path: pdfPath }),
+      JSON.stringify({ success: true, booking_id: bookingId }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
