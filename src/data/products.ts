@@ -14,6 +14,7 @@ interface ProductRow {
   nombre: string;
   marca: string;
   categoria: string;
+  subcategoria: string | null;
   especie: string;
   formato: string;
   precio: number;
@@ -38,6 +39,7 @@ function rowToProduct(row: ProductRow): Product {
     nombre: row.nombre,
     marca: row.marca,
     categoria: row.categoria as Categoria,
+    subcategoria: row.subcategoria ?? undefined,
     especie: row.especie as 'perro' | 'gato',
     formato: row.formato,
     precio: Number(row.precio),

@@ -18,6 +18,7 @@ export interface Product {
   nombre: string;
   marca: string;
   categoria: Categoria;
+  subcategoria?: string;
   especie: Especie;
   formato: string;
   precio: number;

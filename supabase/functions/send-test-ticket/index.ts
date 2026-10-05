@@ -45,7 +45,7 @@ function money(n: number) {
 
 function toBase64(bytes: Uint8Array): string {
   let result = "";
-  const chunkSize = 0x8000;
+  const chunkSize = 0x7ffe;
   for (let offset = 0; offset < bytes.length; offset += chunkSize) {
     result += btoa(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)));
   }
