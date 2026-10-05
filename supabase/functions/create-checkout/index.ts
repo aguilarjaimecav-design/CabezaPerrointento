@@ -10,6 +10,8 @@ const corsHeaders = {
 interface CheckoutItem {
   id: string;
   cantidad: number;
+  variante_formato?: string;
+  variante_precio?: number;
 }
 
 interface CheckoutPayload {
@@ -107,7 +109,7 @@ Deno.serve(async (req: Request) => {
 
     // Validar precios consultando la base de datos con la clave de servicio
     const productIds = items.map((i) => i.id);
-    const query = `${supabaseUrl}/rest/v1/products?id=in.(${productIds.map(encodeURIComponent).join(",")})&select=id,nombre,precio,imagen`;
+    const query = `${supabaseUrl}/rest/v1/products?id=in.(${productIds.map(encodeURIComponent).join(",")})&select=id,nombre,precio,imagen,variantes`;
     const prodRes = await fetch(query, {
       headers: {
         apikey: supabaseServiceKey,
@@ -122,7 +124,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const products: { id: string; nombre: string; precio: number; imagen: string }[] =
+    const products: { id: string; nombre: string; precio: number; imagen: string; variantes: { formato: string; precio: number }[] | null }[] =
       await prodRes.json();
 
     if (products.length !== productIds.length) {
@@ -140,8 +142,22 @@ Deno.serve(async (req: Request) => {
     for (const item of items) {
       const prod = products.find((p) => p.id === item.id);
       if (!prod) continue;
-      const precioCentimos = Math.round(Number(prod.precio) * 100);
-      subtotal += Number(prod.precio) * item.cantidad;
+      let precioValidado = Number(prod.precio);
+      let nombreProducto = prod.nombre;
+      if (item.variante_formato) {
+        const variantes = Array.isArray(prod.variantes) ? prod.variantes : [];
+        const v = variantes.find((vv) => vv.formato === item.variante_formato);
+        if (!v) {
+          return new Response(
+            JSON.stringify({ error: `Variante no encontrada para ${prod.nombre}: ${item.variante_formato}` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        precioValidado = Number(v.precio);
+        nombreProducto = `${prod.nombre} (${item.variante_formato})`;
+      }
+      const precioCentimos = Math.round(precioValidado * 100);
+      subtotal += precioValidado * item.cantidad;
 
       const imagenUrl = prod.imagen
         ? (prod.imagen.startsWith("http") ? prod.imagen : `${origin}${prod.imagen}`)
@@ -153,7 +169,7 @@ Deno.serve(async (req: Request) => {
           currency: "eur",
           unit_amount: precioCentimos,
           product_data: {
-            name: prod.nombre,
+            name: nombreProducto,
             images: imagenUrl ? [imagenUrl] : undefined,
           },
         },
@@ -309,12 +325,22 @@ Deno.serve(async (req: Request) => {
     // Guardar items del pedido
     const itemPayload = items.map((item) => {
       const prod = products.find((p) => p.id === item.id)!;
+      let precioUnitario = Number(prod.precio);
+      let productName = prod.nombre;
+      if (item.variante_formato) {
+        const variantes = Array.isArray(prod.variantes) ? prod.variantes : [];
+        const v = variantes.find((vv) => vv.formato === item.variante_formato);
+        if (v) {
+          precioUnitario = Number(v.precio);
+          productName = `${prod.nombre} (${item.variante_formato})`;
+        }
+      }
       return {
         order_id: orderId,
         product_id: item.id,
-        product_name: prod.nombre,
+        product_name: productName,
         cantidad: item.cantidad,
-        precio_unitario: Number(prod.precio),
+        precio_unitario: precioUnitario,
       };
     });
 

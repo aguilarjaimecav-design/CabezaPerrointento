@@ -7,6 +7,12 @@ export interface NutrienteInfo {
   valor: string;
 }
 
+export interface Variante {
+  formato: string;
+  precio: number;
+  precioAnterior?: number;
+}
+
 export interface Product {
   id: string;
   nombre: string;
@@ -16,6 +22,7 @@ export interface Product {
   formato: string;
   precio: number;
   precioAnterior?: number;
+  variantes: Variante[];
   valoracion: number;
   numValoraciones: number;
   descripcionBreve: string;
@@ -31,6 +38,7 @@ export interface Product {
 export interface CartItem {
   product: Product;
   cantidad: number;
+  variante?: Variante;
 }
 
 export interface TimeSlot {

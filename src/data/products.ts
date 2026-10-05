@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { Categoria, NutrienteInfo, Product } from '@/types';
+import { Categoria, NutrienteInfo, Product, Variante } from '@/types';
 
 export const CATEGORIAS: { slug: Categoria; nombre: string; especie: 'perro' | 'gato' | 'ambas' }[] = [
   { slug: 'pienso-perros', nombre: 'Pienso para perros', especie: 'perro' },
@@ -18,6 +18,7 @@ interface ProductRow {
   formato: string;
   precio: number;
   precio_anterior: number | null;
+  variantes: Variante[] | null;
   valoracion: number;
   num_valoraciones: number;
   descripcion_breve: string;
@@ -31,6 +32,7 @@ interface ProductRow {
 }
 
 function rowToProduct(row: ProductRow): Product {
+  const variantes = Array.isArray(row.variantes) ? row.variantes : [];
   return {
     id: row.id,
     nombre: row.nombre,
@@ -40,6 +42,7 @@ function rowToProduct(row: ProductRow): Product {
     formato: row.formato,
     precio: Number(row.precio),
     precioAnterior: row.precio_anterior ? Number(row.precio_anterior) : undefined,
+    variantes,
     valoracion: Number(row.valoracion),
     numValoraciones: row.num_valoraciones,
     descripcionBreve: row.descripcion_breve,
@@ -112,4 +115,12 @@ export async function fetchProductsByIds(ids: string[]): Promise<Product[]> {
 
 export function categoriaNombre(categoria: Categoria): string {
   return CATEGORIAS.find((c) => c.slug === categoria)?.nombre ?? categoria;
+}
+
+export function getDisplayPrice(product: Product): number {
+  return product.precio;
+}
+
+export function hasVariantes(product: Product): boolean {
+  return product.variantes.length > 1;
 }
