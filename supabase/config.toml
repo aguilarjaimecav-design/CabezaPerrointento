@@ -13,6 +13,9 @@ verify_jwt = false
 [functions.stripe-webhook]
 verify_jwt = false
 
+[functions.redsys-webhook]
+verify_jwt = false
+
 [functions.download-ticket]
 verify_jwt = false
 

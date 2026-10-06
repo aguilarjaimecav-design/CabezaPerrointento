@@ -395,9 +395,18 @@ function Checkout() {
         body: JSON.stringify(payload),
       });
       const result = await res.json();
-      if (!res.ok || !result.url) { setError(result.error || 'No se pudo iniciar el pago. Inténtalo de nuevo.'); setSaving(false); return; }
+      if (!res.ok || !result.redsys_url) { setError(result.error || 'No se pudo iniciar el pago. Inténtalo de nuevo.'); setSaving(false); return; }
       clearCart();
-      window.location.href = result.url;
+      // Auto-submit hidden form to Redsys
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = result.redsys_url;
+      const addField = (name: string, value: string) => { const input = document.createElement('input'); input.type = 'hidden'; input.name = name; input.value = value; form.appendChild(input); };
+      addField('Ds_SignatureVersion', 'HMAC_SHA256_V1');
+      addField('Ds_MerchantParameters', result.redsys_merchant_parameters);
+      addField('Ds_Signature', result.redsys_signature);
+      document.body.appendChild(form);
+      form.submit();
     } catch { setError('No se pudo conectar con el servicio de pago. Inténtalo de nuevo.'); setSaving(false); }
   };
   if (!items.length) return <div className="page-heading"><div className="mx-auto max-w-7xl px-5 lg:px-8"><EmptyState title="No hay nada que comprar todavía" text="Añade tus favoritos al carrito y vuelve aquí para completar el pedido." onReset={() => navigate('/tienda')} /></div></div>;
@@ -420,13 +429,13 @@ function PaymentSuccess() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const location = useLocation();
-  const sessionId = new URLSearchParams(location.search).get('session_id');
+  const orderId = new URLSearchParams(location.search).get('order_id') || new URLSearchParams(location.search).get('session_id');
   useEffect(() => {
-    if (!sessionId) { setLoading(false); return; }
+    if (!orderId) { setLoading(false); return; }
     supabase
       .from('orders')
       .select('id, total, subtotal, envio, nombre, email, calle, numero, codigo_postal, localidad, ticket_pdf_path')
-      .eq('stripe_session_id', sessionId)
+      .eq('id', orderId)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
@@ -439,7 +448,7 @@ function PaymentSuccess() {
         }
         setLoading(false);
       });
-  }, [sessionId]);
+  }, [orderId]);
   const downloadTicket = async () => {
     if (!order?.ticket_pdf_path) return;
     setDownloading(true);

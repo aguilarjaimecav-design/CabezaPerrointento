@@ -1,5 +1,23 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import Stripe from "https://esm.sh/stripe@14.25.0";
+
+const REDSYS_MERCHANT_CODE = Deno.env.get("REDSYS_MERCHANT_CODE") ?? "372934588";
+const REDSYS_TERMINAL = Deno.env.get("REDSYS_TERMINAL") ?? "1";
+const REDSYS_CURRENCY = "978";
+const REDSYS_TEST_URL = "https://sis-t.redsys.es:25443/sis/realizarPa";
+
+async function signRedsysRequest(merchantParameters: string, secretKey: string): Promise<string> {
+  const keyData = atob(secretKey);
+  const keyBytes = new Uint8Array(keyData.length);
+  for (let i = 0; i < keyData.length; i++) keyBytes[i] = keyData.charCodeAt(i);
+  const enc = new TextEncoder();
+  const data = enc.encode(merchantParameters);
+  const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sigBuf = await crypto.subtle.sign("HMAC", cryptoKey, data);
+  const sigBytes = new Uint8Array(sigBuf);
+  let computed = "";
+  for (let i = 0; i < sigBytes.length; i++) computed += String.fromCharCode(sigBytes[i]);
+  return btoa(computed);
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -86,10 +104,10 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeSecret) {
+    const redsysSecret = Deno.env.get("REDSYS_SECRET_KEY");
+    if (!redsysSecret) {
       return new Response(
-        JSON.stringify({ error: "Stripe no está configurado." }),
+        JSON.stringify({ error: "Redsys no está configurado." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -134,10 +152,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Construir line items con precios validados del servidor
-    const stripe = new Stripe(stripeSecret, { apiVersion: "2023-10-16" });
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-
     let subtotal = 0;
     for (const item of items) {
       const prod = products.find((p) => p.id === item.id);
@@ -156,24 +170,7 @@ Deno.serve(async (req: Request) => {
         precioValidado = Number(v.precio);
         nombreProducto = `${prod.nombre} (${item.variante_formato})`;
       }
-      const precioCentimos = Math.round(precioValidado * 100);
       subtotal += precioValidado * item.cantidad;
-
-      const imagenUrl = prod.imagen
-        ? (prod.imagen.startsWith("http") ? prod.imagen : `${origin}${prod.imagen}`)
-        : undefined;
-
-      lineItems.push({
-        quantity: item.cantidad,
-        price_data: {
-          currency: "eur",
-          unit_amount: precioCentimos,
-          product_data: {
-            name: nombreProducto,
-            images: imagenUrl ? [imagenUrl] : undefined,
-          },
-        },
-      });
     }
 
     // Validar y aplicar cupón de descuento
@@ -194,16 +191,6 @@ Deno.serve(async (req: Request) => {
             descuento = c.tipo === "porcentaje" ? (subtotal * Number(c.valor)) / 100 : Math.min(Number(c.valor), subtotal);
             descuento = Math.round(descuento * 100) / 100;
             couponCodigo = c.codigo;
-            if (descuento > 0) {
-              lineItems.push({
-                quantity: 1,
-                price_data: {
-                  currency: "eur",
-                  unit_amount: -Math.round(descuento * 100),
-                  product_data: { name: `Descuento (${c.codigo})` },
-                },
-              });
-            }
           }
         }
       }
@@ -267,18 +254,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (envio > 0) {
-      lineItems.push({
-        quantity: 1,
-        price_data: {
-          currency: "eur",
-          unit_amount: Math.round(envio * 100),
-          product_data: {
-            name: zona === "sevilla_capital"
-              ? "Envío a domicilio (Sevilla Capital)"
-              : `Envío a domicilio (${Math.round(distanciaKm * 100) / 100} km)`,
-          },
-        },
-      });
+      // envío incluido en el total del pedido Redsys
     }
 
     // Crear pedido en Supabase como pendiente
@@ -293,7 +269,7 @@ Deno.serve(async (req: Request) => {
       codigo_postal: cliente.codigo_postal,
       localidad: cliente.localidad,
       distancia_km: Math.round(distanciaKm * 100) / 100,
-      metodo_pago: "stripe",
+      metodo_pago: "redsys",
       subtotal,
       descuento,
       envio,
@@ -354,23 +330,30 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify(itemPayload),
     });
 
-    // Crear sesión de Stripe Checkout
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: lineItems,
-      success_url: `${origin}/pago-exitoso?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/pago-cancelado`,
-      customer_email: cliente.email,
-      metadata: {
-        order_id: orderId,
-        nombre: `${cliente.nombre} ${cliente.apellidos}`,
-      },
-      shipping_address_collection: {
-        allowed_countries: ["ES"],
-      },
-    });
+    // Generar número de pedido Redsys (12 dígitos, derivado del UUID)
+    const redsysOrder = orderId.replace(/-/g, "").substring(0, 12).padStart(12, "0");
+    const totalCentimos = Math.round((subtotalTrasDescuento + envio) * 100);
 
-    // Guardar el ID de sesión en el pedido
+    const merchantParams: Record<string, string> = {
+      DS_MERCHANT_AMOUNT: String(totalCentimos),
+      DS_MERCHANT_ORDER: redsysOrder,
+      DS_MERCHANT_MERCHANTCODE: REDSYS_MERCHANT_CODE,
+      DS_MERCHANT_CURRENCY: REDSYS_CURRENCY,
+      DS_MERCHANT_TRANSACTIONTYPE: "0",
+      DS_MERCHANT_TERMINAL: REDSYS_TERMINAL,
+      DS_MERCHANT_MERCHANTURL: `${Deno.env.get("SUPABASE_URL")}/functions/v1/redsys-webhook`,
+      DS_MERCHANT_URLOK: `${origin}/pago-exitoso?order_id=${orderId}`,
+      DS_MERCHANT_URLKO: `${origin}/pago-cancelado?order_id=${orderId}`,
+      DS_MERCHANT_CONSUMERLANGUAGE: "1",
+      DS_MERCHANT_PRODUCTDESCRIPTION: `Pedido CabezaPerro #${orderId.slice(0, 8)}`,
+      DS_MERCHANT_TITULAR: `${cliente.nombre} ${cliente.apellidos}`,
+      DS_MERCHANT_MERCHANTNAME: "CabezaPerro",
+    };
+
+    const merchantParametersB64 = btoa(unescape(encodeURIComponent(JSON.stringify(merchantParams))));
+    const signature = await signRedsysRequest(merchantParametersB64, redsysSecret);
+
+    // Guardar el número de pedido Redsys en el pedido
     await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${orderId}`, {
       method: "PATCH",
       headers: {
@@ -378,7 +361,7 @@ Deno.serve(async (req: Request) => {
         Authorization: `Bearer ${supabaseServiceKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ stripe_session_id: session.id }),
+      body: JSON.stringify({ stripe_session_id: redsysOrder }),
     });
 
     // Incrementar el uso del cupón
@@ -399,7 +382,15 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ url: session.url }),
+      JSON.stringify({
+        redsys_url: REDSYS_TEST_URL,
+        redsys_merchant_parameters: merchantParametersB64,
+        redsys_signature: signature,
+        redsys_merchant_code: REDSYS_MERCHANT_CODE,
+        redsys_terminal: REDSYS_TERMINAL,
+        redsys_currency: REDSYS_CURRENCY,
+        order_id: orderId,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
