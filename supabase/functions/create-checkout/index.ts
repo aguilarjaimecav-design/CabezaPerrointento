@@ -3,7 +3,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const REDSYS_MERCHANT_CODE = Deno.env.get("REDSYS_MERCHANT_CODE") ?? "372934588";
 const REDSYS_TERMINAL = Deno.env.get("REDSYS_TERMINAL") ?? "1";
 const REDSYS_CURRENCY = "978";
-const REDSYS_TEST_URL = "https://sis-t.redsys.es:25443/sis/realizarPa";
+const REDSYS_TEST_URL = "https://sis-t.redsys.es:25443/sis/realizarPago"
 
 async function signRedsysRequest(merchantParameters: string, secretKey: string): Promise<string> {
   const keyData = atob(secretKey);
