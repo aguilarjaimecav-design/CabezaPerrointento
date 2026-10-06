@@ -335,19 +335,19 @@ Deno.serve(async (req: Request) => {
     const totalCentimos = Math.round((subtotalTrasDescuento + envio) * 100);
 
     const merchantParams: Record<string, string> = {
-      DS_MERCHANT_AMOUNT: String(totalCentimos),
-      DS_MERCHANT_ORDER: redsysOrder,
-      DS_MERCHANT_MERCHANTCODE: REDSYS_MERCHANT_CODE,
-      DS_MERCHANT_CURRENCY: REDSYS_CURRENCY,
-      DS_MERCHANT_TRANSACTIONTYPE: "0",
-      DS_MERCHANT_TERMINAL: REDSYS_TERMINAL,
-      DS_MERCHANT_MERCHANTURL: `${Deno.env.get("SUPABASE_URL")}/functions/v1/redsys-webhook`,
-      DS_MERCHANT_URLOK: `${origin}/pago-exitoso?order_id=${orderId}`,
-      DS_MERCHANT_URLKO: `${origin}/pago-cancelado?order_id=${orderId}`,
-      DS_MERCHANT_CONSUMERLANGUAGE: "1",
-      DS_MERCHANT_PRODUCTDESCRIPTION: `Pedido CabezaPerro #${orderId.slice(0, 8)}`,
-      DS_MERCHANT_TITULAR: `${cliente.nombre} ${cliente.apellidos}`,
-      DS_MERCHANT_MERCHANTNAME: "CabezaPerro",
+      Ds_Merchant_Amount: String(totalCentimos),
+      Ds_Merchant_Order: redsysOrder,
+      Ds_Merchant_MerchantCode: REDSYS_MERCHANT_CODE,
+      Ds_Merchant_Currency: REDSYS_CURRENCY,
+      Ds_Merchant_TransactionType: "0",
+      Ds_Merchant_Terminal: REDSYS_TERMINAL,
+      Ds_Merchant_MerchantURL: `${Deno.env.get("SUPABASE_URL")}/functions/v1/redsys-webhook`,
+      Ds_Merchant_UrlOK: `${origin}/pago-exitoso?order_id=${orderId}`,
+      Ds_Merchant_UrlKO: `${origin}/pago-cancelado?order_id=${orderId}`,
+      Ds_Merchant_ConsumerLanguage: "1",
+      Ds_Merchant_ProductDescription: `Pedido CabezaPerro #${orderId.slice(0, 8)}`,
+      Ds_Merchant_Titular: `${cliente.nombre} ${cliente.apellidos}`,
+      Ds_Merchant_MerchantName: "CabezaPerro",
     };
 
     const merchantParametersB64 = btoa(unescape(encodeURIComponent(JSON.stringify(merchantParams))));
