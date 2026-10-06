@@ -435,14 +435,13 @@ export function EnviosEntregas() {
       <LegalH2>3. Tarifas de envío</LegalH2>
       <LegalH3>Sevilla Capital</LegalH3>
       <ul className="mb-4 space-y-1">
-        <LegalLI>Pedidos superiores a 25 €: envío gratis.</LegalLI>
-        <LegalLI>Pedidos de 25 € o menos: 2 €.</LegalLI>
+        <LegalLI>Todos los pedidos: envío gratis.</LegalLI>
       </ul>
       <LegalH3>Sevilla Provincia (fuera de la capital)</LegalH3>
       <ul className="mb-4 space-y-1">
-        <LegalLI>Hasta 6 km: gratis (pedido &gt; 25 €) o 2 € (pedido ≤ 25 €).</LegalLI>
-        <LegalLI>De 6 a 9 km: 2,90 € (pedido &gt; 25 €) o 4,90 € (pedido ≤ 25 €).</LegalLI>
-        <LegalLI>De 9 a 18 km: 4,90 € (pedido &gt; 25 €) o 6,90 € (pedido ≤ 25 €).</LegalLI>
+        <LegalLI>Hasta 6 km: envío gratis.</LegalLI>
+        <LegalLI>De 6 a 9 km: 2,90 €.</LegalLI>
+        <LegalLI>De 9 a 18 km: 4,90 €.</LegalLI>
         <LegalLI>Más de 18 km: no se realiza envío a domicilio.</LegalLI>
       </ul>
       <LegalH2>4. Recepción del pedido</LegalH2>

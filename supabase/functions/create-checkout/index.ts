@@ -91,10 +91,10 @@ function esSevillaCapital(codigoPostal: string, localidad: string): boolean {
   return false;
 }
 
-function calcularTarifaProvincia(distanciaKm: number, subtotal: number): { envio: number; disponible: boolean } {
-  if (distanciaKm <= 6) return { envio: subtotal >= 25 ? 0 : 2.0, disponible: true };
-  if (distanciaKm <= 9) return { envio: subtotal >= 25 ? 2.9 : 4.9, disponible: true };
-  if (distanciaKm <= 18) return { envio: subtotal >= 25 ? 4.9 : 6.9, disponible: true };
+function calcularTarifaProvincia(distanciaKm: number): { envio: number; disponible: boolean } {
+  if (distanciaKm <= 6) return { envio: 0, disponible: true };
+  if (distanciaKm <= 9) return { envio: 2.9, disponible: true };
+  if (distanciaKm <= 18) return { envio: 4.9, disponible: true };
   return { envio: 0, disponible: false };
 }
 
@@ -213,7 +213,7 @@ Deno.serve(async (req: Request) => {
 
     if (esSevillaCapital(cliente.codigo_postal, cliente.localidad)) {
       // Sevilla Capital: sin cálculo de kilómetros
-      envio = subtotalTrasDescuento >= 25 ? 0 : 2.0;
+      envio = 0;
     } else {
       // Sevilla Provincia: calcular distancia por carretera
       if (!ORS_API_KEY) {
@@ -241,7 +241,7 @@ Deno.serve(async (req: Request) => {
       }
 
       zona = "sevilla_provincia";
-      const tarifa = calcularTarifaProvincia(distanciaKm, subtotalTrasDescuento);
+      const tarifa = calcularTarifaProvincia(distanciaKm);
       envio = tarifa.envio;
       disponible = tarifa.disponible;
 

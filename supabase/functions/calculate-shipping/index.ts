@@ -85,18 +85,18 @@ async function getDrivingDistance(origin: GeocodeResult, dest: GeocodeResult): P
   return data.routes[0].summary.distance;
 }
 
-function calcularTarifaProvincia(distanciaKm: number, subtotal: number): {
+function calcularTarifaProvincia(distanciaKm: number): {
   envio: number;
   disponible: boolean;
 } {
   if (distanciaKm <= 6) {
-    return { envio: subtotal >= 25 ? 0 : 2.0, disponible: true };
+    return { envio: 0, disponible: true };
   }
   if (distanciaKm <= 9) {
-    return { envio: subtotal >= 25 ? 2.9 : 4.9, disponible: true };
+    return { envio: 2.9, disponible: true };
   }
   if (distanciaKm <= 18) {
-    return { envio: subtotal >= 25 ? 4.9 : 6.9, disponible: true };
+    return { envio: 4.9, disponible: true };
   }
   return { envio: 0, disponible: false };
 }
@@ -124,11 +124,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const sub = Number(subtotal);
-
     // 1. Determinar si pertenece a Sevilla Capital
     if (esSevillaCapital(codigo_postal, localidad)) {
-      const envio = sub >= 25 ? 0 : 2.0;
+      const envio = 0;
       return new Response(
         JSON.stringify({
           zona: "sevilla_capital",
@@ -164,7 +162,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { envio, disponible } = calcularTarifaProvincia(distanciaKm, sub);
+    const { envio, disponible } = calcularTarifaProvincia(distanciaKm);
 
     return new Response(
       JSON.stringify({
