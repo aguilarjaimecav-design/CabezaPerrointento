@@ -1,20 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import CryptoJS from "npm:crypto-js@4.2.0";
 
-async function verifyRedsysSignature(merchantParameters: string, signature: string, secretKey: string): Promise<boolean> {
-  const keyData = atob(secretKey);
-  const keyBytes = new Uint8Array(keyData.length);
-  for (let i = 0; i < keyData.length; i++) keyBytes[i] = keyData.charCodeAt(i);
-
-  const enc = new TextEncoder();
-  const data = enc.encode(merchantParameters);
-
-  const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, data);
-  const signatureBytes = new Uint8Array(signatureBuffer);
-  let computed = "";
-  for (let i = 0; i < signatureBytes.length; i++) computed += String.fromCharCode(signatureBytes[i]);
-  const computedB64 = btoa(computed);
-  return computedB64 === signature;
+function verifyRedsysSignature(merchantParameters: string, signature: string, order: string, secretKey: string): boolean {
+  const merchantKey = CryptoJS.enc.Base64.parse(secretKey);
+  const derivedKey = CryptoJS.TripleDES.encrypt(order, merchantKey, {
+    mode: CryptoJS.mode.ECB,
+    padding: CryptoJS.pad.ZeroPadding,
+  }).ciphertext;
+  const computedSignature = CryptoJS.HmacSHA256(merchantParameters, derivedKey).toString(CryptoJS.enc.Base64);
+  return computedSignature === signature;
 }
 import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
 
@@ -323,21 +317,20 @@ Deno.serve(async (req: Request) => {
   }
 
   // Verify HMAC SHA256 signature
-  const isValid = await verifyRedsysSignature(dsMerchantParameters, dsSignature, redsysSecret);
-  if (!isValid) {
-    return new Response("Firma no válida.", { status: 400 });
-  }
-
   // Decode merchant parameters
   const decodedJson = atob(dsMerchantParameters);
   const params = JSON.parse(decodedJson);
   const dsResponse = params["Ds_Response"];
-  const orderId = params["Ds_Merchant_Order"];
+  const redsysOrder = params["Ds_Merchant_Order"];
+
+  if (!redsysOrder || !verifyRedsysSignature(dsMerchantParameters, dsSignature, redsysOrder, redsysSecret)) {
+    return new Response("Firma no válida.", { status: 400 });
+  }
 
   // Ds_Response "0000" = authorized; anything else = not authorized
   const authorized = dsResponse === "0000" || (typeof dsResponse === "string" && /^0000[0-9]?$/.test(dsResponse));
 
-  if (!authorized || !orderId) {
+  if (!authorized) {
     return new Response(JSON.stringify({ received: true, authorized: false }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -346,12 +339,20 @@ Deno.serve(async (req: Request) => {
 
   // Idempotency check
   const existingRes = await fetch(
-    `${supabaseUrl}/rest/v1/orders?id=eq.${orderId}&select=estado,ticket_pdf_path`,
+    `${supabaseUrl}/rest/v1/orders?stripe_session_id=eq.${encodeURIComponent(redsysOrder)}&select=id,estado,ticket_pdf_path`,
     { headers: adminHeaders },
   );
-  const existingRows: { estado: string; ticket_pdf_path: string | null }[] = existingRes.ok ? await existingRes.json() : [];
+  const existingRows: { id: string; estado: string; ticket_pdf_path: string | null }[] = existingRes.ok ? await existingRes.json() : [];
+  const orderId = existingRows[0]?.id;
 
-  if (existingRows.length > 0 && existingRows[0].estado === "pagado" && existingRows[0].ticket_pdf_path) {
+  if (!orderId) {
+    return new Response(JSON.stringify({ received: true, authorized: true, order_found: false }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (existingRows[0].estado === "pagado" && existingRows[0].ticket_pdf_path) {
     return new Response(JSON.stringify({ received: true, deduplicated: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

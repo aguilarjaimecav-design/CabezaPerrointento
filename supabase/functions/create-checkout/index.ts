@@ -1,22 +1,18 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import CryptoJS from "npm:crypto-js@4.2.0";
 
 const REDSYS_MERCHANT_CODE = Deno.env.get("REDSYS_MERCHANT_CODE") ?? "372934588";
 const REDSYS_TERMINAL = Deno.env.get("REDSYS_TERMINAL") ?? "1";
 const REDSYS_CURRENCY = "978";
 const REDSYS_TEST_URL = "https://sis-t.redsys.es:25443/sis/realizarPago"
 
-async function signRedsysRequest(merchantParameters: string, secretKey: string): Promise<string> {
-  const keyData = atob(secretKey);
-  const keyBytes = new Uint8Array(keyData.length);
-  for (let i = 0; i < keyData.length; i++) keyBytes[i] = keyData.charCodeAt(i);
-  const enc = new TextEncoder();
-  const data = enc.encode(merchantParameters);
-  const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const sigBuf = await crypto.subtle.sign("HMAC", cryptoKey, data);
-  const sigBytes = new Uint8Array(sigBuf);
-  let computed = "";
-  for (let i = 0; i < sigBytes.length; i++) computed += String.fromCharCode(sigBytes[i]);
-  return btoa(computed);
+function signRedsysRequest(merchantParameters: string, order: string, secretKey: string): string {
+  const merchantKey = CryptoJS.enc.Base64.parse(secretKey);
+  const derivedKey = CryptoJS.TripleDES.encrypt(order, merchantKey, {
+    mode: CryptoJS.mode.ECB,
+    padding: CryptoJS.pad.ZeroPadding,
+  }).ciphertext;
+  return CryptoJS.HmacSHA256(merchantParameters, derivedKey).toString(CryptoJS.enc.Base64);
 }
 
 const corsHeaders = {
@@ -351,7 +347,7 @@ Deno.serve(async (req: Request) => {
     };
 
     const merchantParametersB64 = btoa(unescape(encodeURIComponent(JSON.stringify(merchantParams))));
-    const signature = await signRedsysRequest(merchantParametersB64, redsysSecret);
+    const signature = signRedsysRequest(merchantParametersB64, redsysOrder, redsysSecret);
 
     // Guardar el número de pedido Redsys en el pedido
     await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${orderId}`, {
