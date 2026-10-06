@@ -1,13 +1,17 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import CryptoJS from "npm:crypto-js@4.2.0";
 
+function toBase64Url(value: string): string {
+  return value.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 function verifyRedsysSignature(merchantParameters: string, signature: string, order: string, secretKey: string): boolean {
   const merchantKey = CryptoJS.enc.Base64.parse(secretKey);
   const derivedKey = CryptoJS.TripleDES.encrypt(order, merchantKey, {
     mode: CryptoJS.mode.ECB,
     padding: CryptoJS.pad.ZeroPadding,
   }).ciphertext;
-  const computedSignature = CryptoJS.HmacSHA256(merchantParameters, derivedKey).toString(CryptoJS.enc.Base64);
+  const computedSignature = toBase64Url(CryptoJS.HmacSHA256(merchantParameters, derivedKey).toString(CryptoJS.enc.Base64));
   return computedSignature === signature;
 }
 import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
@@ -318,7 +322,8 @@ Deno.serve(async (req: Request) => {
 
   // Verify HMAC SHA256 signature
   // Decode merchant parameters
-  const decodedJson = atob(dsMerchantParameters);
+  const merchantParametersBase64 = dsMerchantParameters.replace(/-/g, "+").replace(/_/g, "/");
+  const decodedJson = decodeURIComponent(escape(atob(merchantParametersBase64)));
   const params = JSON.parse(decodedJson);
   const dsResponse = params["Ds_Response"];
   const redsysOrder = params["Ds_Merchant_Order"];
