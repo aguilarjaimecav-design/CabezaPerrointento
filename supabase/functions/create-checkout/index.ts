@@ -6,17 +6,13 @@ const REDSYS_TERMINAL = Deno.env.get("REDSYS_TERMINAL") ?? "1";
 const REDSYS_CURRENCY = "978";
 const REDSYS_TEST_URL = "https://sis-t.redsys.es:25443/sis/realizarPago";
 
-function toBase64Url(value: string): string {
-  return value.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
 function signRedsysRequest(merchantParameters: string, order: string, secretKey: string): string {
   const merchantKey = CryptoJS.enc.Base64.parse(secretKey);
   const derivedKey = CryptoJS.TripleDES.encrypt(order, merchantKey, {
     mode: CryptoJS.mode.ECB,
     padding: CryptoJS.pad.ZeroPadding,
   }).ciphertext;
-  return toBase64Url(CryptoJS.HmacSHA256(merchantParameters, derivedKey).toString(CryptoJS.enc.Base64));
+  return CryptoJS.HmacSHA256(merchantParameters, derivedKey).toString(CryptoJS.enc.Base64);
 }
 
 const corsHeaders = {
@@ -365,8 +361,8 @@ Deno.serve(async (req: Request) => {
       Ds_Merchant_MerchantName: "CabezaPerro",
     };
 
-    const merchantParametersB64 = toBase64Url(btoa(unescape(encodeURIComponent(JSON.stringify(merchantParams)))));
-    const signature = signRedsysRequest(merchantParametersB64, redsysOrder, redsysSecret);
+    const merchantParametersB64 = btoa(unescape(encodeURIComponent(JSON.stringify(merchantParams))));
+    const signature = signRedsysRequest(merchantParametersB64, redsysOrder, redsysSecret.trim());
 
     // Guardar el número de pedido Redsys en el pedido
     await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${orderId}`, {

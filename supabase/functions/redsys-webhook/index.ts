@@ -1,17 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import CryptoJS from "npm:crypto-js@4.2.0";
 
-function toBase64Url(value: string): string {
-  return value.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
 function verifyRedsysSignature(merchantParameters: string, signature: string, order: string, secretKey: string): boolean {
   const merchantKey = CryptoJS.enc.Base64.parse(secretKey);
   const derivedKey = CryptoJS.TripleDES.encrypt(order, merchantKey, {
     mode: CryptoJS.mode.ECB,
     padding: CryptoJS.pad.ZeroPadding,
   }).ciphertext;
-  const computedSignature = toBase64Url(CryptoJS.HmacSHA256(merchantParameters, derivedKey).toString(CryptoJS.enc.Base64));
+  const computedSignature = CryptoJS.HmacSHA256(merchantParameters, derivedKey).toString(CryptoJS.enc.Base64);
   return computedSignature === signature;
 }
 import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
