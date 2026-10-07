@@ -260,7 +260,7 @@ async function generateOrderPdf(order: OrderRow, items: OrderItemRow[], orderId:
 
   const infoY = totalsTop - 105;
   page.drawText("Forma de pago:", { x: margin, y: infoY, size: 9, font: bold, color: dark });
-  page.drawText(order.metodo_pago || "Pago seguro con Stripe", { x: margin, y: infoY - 16, size: 9, font: regular, color: gray });
+  page.drawText(order.metodo_pago || "Pago seguro con Redsys", { x: margin, y: infoY - 16, size: 9, font: regular, color: gray });
   page.drawText("Observaciones:", { x: margin, y: infoY - 48, size: 9, font: bold, color: dark });
   page.drawText("Pedido pagado · Entrega a domicilio en Sevilla y alrededores", { x: margin, y: infoY - 64, size: 8.5, font: regular, color: gray });
   page.drawText("¡Gracias", { x: 235, y: 105, size: 22, font: serif, color: green });

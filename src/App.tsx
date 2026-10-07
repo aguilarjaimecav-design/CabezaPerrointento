@@ -434,7 +434,7 @@ function Checkout() {
     } catch { setError('No se pudo conectar con el servicio de pago. Inténtalo de nuevo.'); setSaving(false); }
   };
   if (!items.length) return <div className="page-heading"><div className="mx-auto max-w-7xl px-5 lg:px-8"><EmptyState title="No hay nada que comprar todavía" text="Añade tus favoritos al carrito y vuelve aquí para completar el pedido." onReset={() => navigate('/tienda')} /></div></div>;
-  return <div className="animate-fadeIn"><div className="page-heading"><div className="mx-auto max-w-7xl px-5 lg:px-8"><SectionIntro eyebrow="Último paso" title="Finalizar compra" text="Entregamos tu pedido con cariño en Sevilla y alrededores. El pago se procesa de forma segura con Stripe." /><div className="mt-8"><CheckoutSteps current={2} /></div><div className="mt-10"><TrustBar variant="light" /></div></div></div><div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 lg:grid-cols-[1fr_360px] lg:px-8"><form onSubmit={submit} className="space-y-8"><FormSection title="Datos personales"><div className="form-grid"><Field label="Nombre" name="nombre" required /><Field label="Apellidos" name="apellidos" required /><Field label="Teléfono" name="telefono" type="tel" required /><Field label="Email" name="email" type="email" required /></div></FormSection><FormSection title="Dirección de entrega"><div className="form-grid"><Field label="Calle" name="calle" required /><Field label="Número" name="numero" required /><Field label="Piso / puerta" name="piso" /><Field label="Código postal" name="codigo_postal" required /><Field label="Localidad" name="localidad" required placeholder="Ej. Tomares, Mairena…" /><div><label className="field-label">Provincia</label><input value="Sevilla" readOnly className="field-input bg-cream-100" /></div></div>{envio === null ? <div className="mt-5 rounded-xl border-2 border-dashed border-accent-500 bg-accent-500/5 p-5"><div className="flex items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-500 text-cream-50"><Truck size={18} /></span><div className="flex-1"><p className="text-sm font-bold text-primary-800">Calcula el envío antes de pagar</p><p className="mt-1 text-xs leading-5 text-secondary-600">Rellena tu dirección arriba y pulsa el botón para ver el coste de entrega. No podrás continuar al pago sin haberlo calculado.</p></div></div><button type="button" onClick={calcularEnvio} disabled={calculando} className="button-dark mt-4 w-full">{calculando ? 'Calculando…' : 'Calcular coste de envío'} <MapPin size={16} /></button>{envioError && <p className="mt-3 rounded-xl bg-error-50 p-3 text-sm text-error-700">{envioError}</p>}</div> : <div className="mt-5 rounded-xl border border-cream-300 bg-cream-50 p-4 text-sm text-secondary-700"><div className="flex items-center justify-between"><p className="font-bold text-primary-800">{distanciaKm === 0 ? 'Sevilla Capital' : `Distancia: ${distanciaKm} km`}</p><p>Envío: {envio === 0 ? <span className="font-bold text-success-600">Gratis</span> : formatPrice(envio)}</p></div><button type="button" onClick={calcularEnvio} disabled={calculando} className="button-text mt-2 text-xs">Recalcular envío</button></div>}</FormSection><div className="rounded-xl border border-cream-300 bg-cream-100 p-4 text-sm text-secondary-700"><ShieldCheck size={18} className="mb-1 text-accent-600" /> Pago seguro con Stripe. Se te redirigirá a la pasarela de pago para completar la compra.</div>
+  return <div className="animate-fadeIn"><div className="page-heading"><div className="mx-auto max-w-7xl px-5 lg:px-8"><SectionIntro eyebrow="Último paso" title="Finalizar compra" text="Entregamos tu pedido con cariño en Sevilla y alrededores. El pago se procesa de forma segura con Redsys." /><div className="mt-8"><CheckoutSteps current={2} /></div><div className="mt-10"><TrustBar variant="light" /></div></div></div><div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 lg:grid-cols-[1fr_360px] lg:px-8"><form onSubmit={submit} className="space-y-8"><FormSection title="Datos personales"><div className="form-grid"><Field label="Nombre" name="nombre" required /><Field label="Apellidos" name="apellidos" required /><Field label="Teléfono" name="telefono" type="tel" required /><Field label="Email" name="email" type="email" required /></div></FormSection><FormSection title="Dirección de entrega"><div className="form-grid"><Field label="Calle" name="calle" required /><Field label="Número" name="numero" required /><Field label="Piso / puerta" name="piso" /><Field label="Código postal" name="codigo_postal" required /><Field label="Localidad" name="localidad" required placeholder="Ej. Tomares, Mairena…" /><div><label className="field-label">Provincia</label><input value="Sevilla" readOnly className="field-input bg-cream-100" /></div></div>{envio === null ? <div className="mt-5 rounded-xl border-2 border-dashed border-accent-500 bg-accent-500/5 p-5"><div className="flex items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-500 text-cream-50"><Truck size={18} /></span><div className="flex-1"><p className="text-sm font-bold text-primary-800">Calcula el envío antes de pagar</p><p className="mt-1 text-xs leading-5 text-secondary-600">Rellena tu dirección arriba y pulsa el botón para ver el coste de entrega. No podrás continuar al pago sin haberlo calculado.</p></div></div><button type="button" onClick={calcularEnvio} disabled={calculando} className="button-dark mt-4 w-full">{calculando ? 'Calculando…' : 'Calcular coste de envío'} <MapPin size={16} /></button>{envioError && <p className="mt-3 rounded-xl bg-error-50 p-3 text-sm text-error-700">{envioError}</p>}</div> : <div className="mt-5 rounded-xl border border-cream-300 bg-cream-50 p-4 text-sm text-secondary-700"><div className="flex items-center justify-between"><p className="font-bold text-primary-800">{distanciaKm === 0 ? 'Sevilla Capital' : `Distancia: ${distanciaKm} km`}</p><p>Envío: {envio === 0 ? <span className="font-bold text-success-600">Gratis</span> : formatPrice(envio)}</p></div><button type="button" onClick={calcularEnvio} disabled={calculando} className="button-text mt-2 text-xs">Recalcular envío</button></div>}</FormSection><div className="rounded-xl border border-cream-300 bg-cream-100 p-4 text-sm text-secondary-700"><ShieldCheck size={18} className="mb-1 text-accent-600" /> Pago seguro con Redsys. Se te redirigirá a la pasarela de pago para completar la compra.</div>
     <div className="rounded-xl border border-cream-300 bg-cream-50 p-5"><h3 className="flex items-center gap-2 text-sm font-bold text-primary-800"><Tag size={16} className="text-accent-600" /> Código de descuento</h3>{appliedCode ? <div className="mt-3 flex items-center justify-between rounded-xl bg-success-50 px-4 py-3"><span className="flex items-center gap-2 text-sm font-bold text-success-700"><Check size={16} /> {appliedCode} aplicado</span><button type="button" onClick={removeCoupon} className="text-xs font-bold text-secondary-500 hover:text-error-600">Quitar</button></div> : <div className="mt-3 flex gap-2"><input value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="Introduce tu código" className="flex-1 rounded-xl border border-cream-300 bg-cream-50 px-4 py-2.5 text-sm uppercase outline-none focus:border-accent-500" /><button type="button" onClick={applyCoupon} disabled={couponLoading || !couponCode.trim()} className="button-small shrink-0">{couponLoading ? 'Validando…' : 'Aplicar'}</button></div>}{couponError && <p className="mt-2 text-xs font-semibold text-error-600">{couponError}</p>}</div>{error && <p className="rounded-xl bg-error-50 p-4 text-sm text-error-700">{error}</p>}{envio === null && <p className="rounded-xl border border-accent-500/40 bg-accent-500/5 p-3 text-xs font-semibold text-accent-700">Primero calcula el envío para poder continuar al pago.</p>}<button disabled={saving || envio === null || !envioDisponible} className="button-dark w-full sm:w-auto">{saving ? 'Redirigiendo al pago…' : 'Pagar ahora'} <ArrowRight size={17} /></button></form><OrderSummary subtotal={subtotal} envio={envio} total={total} discount={totalDiscount} appliedCode={appliedCode} /></div></div>;
 }
 
@@ -443,30 +443,46 @@ function FreeShippingBar() {
 }
 
 function PaymentSuccess() {
-  const [order, setOrder] = useState<{ id: string; total: number; subtotal: number; envio: number; nombre: string; email: string; calle: string; numero: string; codigo_postal: string; localidad: string; ticket_pdf_path: string | null } | null>(null);
+  const [order, setOrder] = useState<{ id: string; total: number; subtotal: number; envio: number; nombre: string; email: string; calle: string; numero: string; codigo_postal: string; localidad: string; ticket_pdf_path: string | null; estado: string } | null>(null);
   const [items, setItems] = useState<{ product_name: string; cantidad: number; precio_unitario: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const location = useLocation();
   const orderId = new URLSearchParams(location.search).get('order_id') || new URLSearchParams(location.search).get('session_id');
   useEffect(() => {
     if (!orderId) { setLoading(false); return; }
-    supabase
-      .from('orders')
-      .select('id, total, subtotal, envio, nombre, email, calle, numero, codigo_postal, localidad, ticket_pdf_path')
-      .eq('id', orderId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setOrder(data as typeof order);
-          supabase
-            .from('order_items')
-            .select('product_name, cantidad, precio_unitario')
-            .eq('order_id', (data as { id: string }).id)
-            .then(({ data: itemData }) => { if (itemData) setItems(itemData as typeof items); });
-        }
+    let retries = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const checkOrder = async () => {
+      const { data } = await supabase
+        .from('orders')
+        .select('id, total, subtotal, envio, nombre, email, calle, numero, codigo_postal, localidad, ticket_pdf_path, estado')
+        .eq('id', orderId)
+        .maybeSingle();
+      if (data && (data as { estado: string }).estado === 'pagado') {
+        setOrder(data as typeof order);
+        supabase
+          .from('order_items')
+          .select('product_name, cantidad, precio_unitario')
+          .eq('order_id', (data as { id: string }).id)
+          .then(({ data: itemData }) => { if (itemData) setItems(itemData as typeof items); });
         setLoading(false);
-      });
+        setProcessing(false);
+        return;
+      }
+      if (retries < 10) {
+        retries++;
+        setProcessing(true);
+        setLoading(false);
+        timer = setTimeout(checkOrder, 3000);
+      } else {
+        setLoading(false);
+        setProcessing(false);
+      }
+    };
+    checkOrder();
+    return () => { if (timer) clearTimeout(timer); };
   }, [orderId]);
   const downloadTicket = async () => {
     if (!order?.ticket_pdf_path) return;
@@ -486,7 +502,8 @@ function PaymentSuccess() {
     setDownloading(false);
   };
   if (loading) return <div className="flex min-h-[560px] items-center justify-center px-5 py-20"><div className="text-center text-secondary-500">Cargando detalles de tu pedido…</div></div>;
-  if (!order) return <Confirmation icon={<PackageCheck size={42} />} title="¡Pago completado!" text="Gracias por tu compra. Hemos recibido tu pago correctamente y prepararemos tu pedido para entrega en Sevilla." action="Volver a la tienda" href="/tienda" />;
+  if (processing) return <div className="flex min-h-[560px] items-center justify-center px-5 py-20"><div className="max-w-lg text-center"><span className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-cream-100 text-accent-600 animate-pulse"><Clock3 size={42} /></span><h1 className="mt-8 font-serif text-4xl text-primary-800">Procesando pago…</h1><p className="mt-4 leading-7 text-secondary-700">Estamos confirmando tu pago con el banco. Esto puede tardar unos segundos. No cierres esta página.</p></div></div>;
+  if (!order) return <Confirmation icon={<Clock3 size={42} />} title="Pago en proceso" text="Tu pago está siendo procesado. Recibirás un email de confirmación en breve. Si no lo recibes en unos minutos, contáctanos por WhatsApp." action="Volver a la tienda" href="/tienda" />;
   return <div className="animate-fadeIn"><div className="mx-auto max-w-3xl px-5 py-12 lg:px-8">
     <div className="text-center"><span className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-success-50 text-success-600"><PackageCheck size={42} /></span><h1 className="mt-8 font-serif text-4xl text-primary-800">¡Pago completado!</h1><p className="mt-4 leading-7 text-secondary-700">Gracias por tu compra, <strong className="text-primary-800">{order.nombre}</strong>. Hemos enviado los detalles a <strong className="text-primary-800">{order.email}</strong>.</p></div>
     <div className="mt-10 rounded-2xl border border-cream-300 bg-cream-50 p-6 md:p-8">

@@ -330,8 +330,13 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify(itemPayload),
     });
 
-    // Generar número de pedido Redsys (12 dígitos, derivado del UUID)
-    const redsysOrder = orderId.replace(/-/g, "").substring(0, 12).padStart(12, "0");
+    // Generar número de pedido Redsys (12 dígitos numéricos, empieza por "3729")
+    const hexDigits = orderId.replace(/-/g, "");
+    let numericSuffix = "";
+    for (let i = 0; i < 8 && i < hexDigits.length; i++) {
+      numericSuffix += String(parseInt(hexDigits[i], 16) % 10);
+    }
+    const redsysOrder = "3729" + numericSuffix.padEnd(8, "0");
     const totalCentimos = Math.round((subtotalTrasDescuento + envio) * 100);
 
     const merchantParams: Record<string, string> = {
