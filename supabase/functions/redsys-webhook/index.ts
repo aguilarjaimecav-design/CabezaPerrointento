@@ -3,8 +3,10 @@ import CryptoJS from "npm:crypto-js@4.2.0";
 
 function verifyRedsysSignature(merchantParameters: string, signature: string, order: string, secretKey: string): boolean {
   const merchantKey = CryptoJS.enc.Base64.parse(secretKey);
+  const iv = CryptoJS.enc.Hex.parse("0000000000000000");
   const derivedKey = CryptoJS.TripleDES.encrypt(order, merchantKey, {
-    mode: CryptoJS.mode.ECB,
+    mode: CryptoJS.mode.CBC,
+    iv: iv,
     padding: CryptoJS.pad.ZeroPadding,
   }).ciphertext;
   const computedSignature = CryptoJS.HmacSHA256(merchantParameters, derivedKey).toString(CryptoJS.enc.Base64);

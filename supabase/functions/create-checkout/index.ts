@@ -8,8 +8,10 @@ const REDSYS_TEST_URL = "https://sis-t.redsys.es:25443/sis/realizarPago";
 
 function signRedsysRequest(merchantParameters: string, order: string, secretKey: string): string {
   const merchantKey = CryptoJS.enc.Base64.parse(secretKey);
+  const iv = CryptoJS.enc.Hex.parse("0000000000000000");
   const derivedKey = CryptoJS.TripleDES.encrypt(order, merchantKey, {
-    mode: CryptoJS.mode.ECB,
+    mode: CryptoJS.mode.CBC,
+    iv: iv,
     padding: CryptoJS.pad.ZeroPadding,
   }).ciphertext;
   return CryptoJS.HmacSHA256(merchantParameters, derivedKey).toString(CryptoJS.enc.Base64);
