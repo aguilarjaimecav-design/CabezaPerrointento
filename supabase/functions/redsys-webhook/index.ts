@@ -326,7 +326,24 @@ Deno.serve(async (req: Request) => {
   const dsResponse = params["Ds_Response"];
   const redsysOrder = params["Ds_Merchant_Order"];
 
-  if (!redsysOrder || !verifyRedsysSignature(dsMerchantParameters, dsSignature, redsysOrder, redsysSecret)) {
+  const signatureValid = redsysOrder
+  ? verifyRedsysSignature(dsMerchantParameters, dsSignature, redsysOrder, redsysSecret)
+  : false;
+
+if (!signatureValid) {
+  return new Response(
+    JSON.stringify({
+      error: "Firma no válida",
+      order: redsysOrder,
+      signatureLength: dsSignature?.length ?? 0,
+      parametersLength: dsMerchantParameters?.length ?? 0,
+    }),
+    {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    },
+  );
+}
     return new Response("Firma no válida.", { status: 400 });
   }
 
