@@ -330,13 +330,23 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify(itemPayload),
     });
 
-    // Generar número de pedido Redsys (12 dígitos numéricos, empieza por "3729")
-    const hexDigits = orderId.replace(/-/g, "");
-    let numericSuffix = "";
-    for (let i = 0; i < 8 && i < hexDigits.length; i++) {
-      numericSuffix += String(parseInt(hexDigits[i], 16) % 10);
+    // Generar número de pedido Redsys secuencial (12 dígitos, "3729" + 8 dígitos)
+    const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/next_redsys_order`, {
+      method: "POST",
+      headers: {
+        apikey: supabaseServiceKey,
+        Authorization: `Bearer ${supabaseServiceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    });
+    if (!rpcRes.ok) {
+      return new Response(
+        JSON.stringify({ error: "No se pudo generar el número de pedido." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
-    const redsysOrder = "3729" + numericSuffix.padEnd(8, "0");
+    const redsysOrder: string = await rpcRes.json();
     const totalCentimos = Math.round((subtotalTrasDescuento + envio) * 100);
 
     const merchantParams: Record<string, string> = {
