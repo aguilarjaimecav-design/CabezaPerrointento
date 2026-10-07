@@ -294,7 +294,7 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
-  const redsysSecret = Deno.env.get("REDSYS_SECRET_KEY")?.trim();
+  const redsysSecret = Deno.env.get("REDSYS_SECRET_KEY");
   if (!redsysSecret) {
     return new Response(
       JSON.stringify({ error: "Falta REDSYS_SECRET_KEY." }),
