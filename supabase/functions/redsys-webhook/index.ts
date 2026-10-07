@@ -10,7 +10,8 @@ function verifyRedsysSignature(merchantParameters: string, signature: string, or
     padding: CryptoJS.pad.ZeroPadding,
   }).ciphertext;
   const computedSignature = CryptoJS.HmacSHA256(merchantParameters, derivedKey).toString(CryptoJS.enc.Base64);
-  return computedSignature === signature;
+  const normalizeB64 = (s: string) => s.replace(/-/g, "+").replace(/_/g, "/").replace(/=+$/, "");
+  return normalizeB64(computedSignature) === normalizeB64(signature);
 }
 import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
 
@@ -324,7 +325,7 @@ Deno.serve(async (req: Request) => {
   const decodedJson = decodeURIComponent(escape(atob(merchantParametersBase64)));
   const params = JSON.parse(decodedJson);
   const dsResponse = params["Ds_Response"];
-  const redsysOrder = params["Ds_Merchant_Order"];
+  const redsysOrder = params["Ds_Order"] ?? params["Ds_Merchant_Order"];
 
   if (!redsysOrder || !verifyRedsysSignature(dsMerchantParameters, dsSignature, redsysOrder, redsysSecret)) {
     return new Response("Firma no válida.", { status: 400 });
