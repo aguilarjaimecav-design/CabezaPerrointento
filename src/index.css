@@ -648,12 +648,11 @@ footer .footer-links a:hover::after { width: 100%; }
 }
 .sevilla-skyline-image {
   display: block;
-  width: min(100%, 720px);
-  height: 140px;
+  width: min(100%, 960px);
+  height: auto;
   margin: 0 auto;
-  object-fit: cover;
-  object-position: center 58%;
+  object-fit: contain;
   mix-blend-mode: multiply;
-  opacity: 0.72;
-  filter: grayscale(1) contrast(0.9);
+  opacity: 0.68;
+  filter: grayscale(1) contrast(0.95);
 }

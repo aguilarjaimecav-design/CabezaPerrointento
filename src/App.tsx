@@ -305,7 +305,7 @@ function AzulejoStrip() {
 function SevillaSkyline() {
   return (
     <div className="sevilla-skyline" aria-hidden="true">
-      <img src="/images/image copy 2.png" alt="" className="sevilla-skyline-image" />
+      <img src="/images/image copy 3.png" alt="" className="sevilla-skyline-image" />
     </div>
   );
 }
