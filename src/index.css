@@ -639,20 +639,3 @@ footer .footer-links a:hover::after { width: 100%; }
   opacity: 0.08;
 }
 
-/* ===== Seville skyline (faded, above footer) ===== */
-.sevilla-skyline {
-  width: 100%;
-  background: linear-gradient(180deg, #FDFCF8 0%, #F5EED9 100%);
-  padding: 0;
-  overflow: hidden;
-}
-.sevilla-skyline-image {
-  display: block;
-  width: min(100%, 560px);
-  height: auto;
-  margin: 0 auto;
-  object-fit: contain;
-  mix-blend-mode: multiply;
-  opacity: 0.34;
-  filter: grayscale(1) contrast(0.78) blur(0.45px);
-}

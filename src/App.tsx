@@ -302,15 +302,7 @@ function AzulejoStrip() {
   );
 }
 
-function SevillaSkyline() {
-  return (
-    <div className="sevilla-skyline" aria-hidden="true">
-      <img src="/images/image copy 3.png" alt="" className="sevilla-skyline-image" />
-    </div>
-  );
-}
-
-function Layout({ children }: { children: React.ReactNode }) { return <><Header /><main>{children}</main><WhatsAppButton /><CartToast /><AzulejoStrip /><SevillaSkyline /><Footer /></>; }
+function Layout({ children }: { children: React.ReactNode }) { return <><Header /><main>{children}</main><WhatsAppButton /><CartToast /><AzulejoStrip /><Footer /></>; }
 
 function SectionIntro({ eyebrow, title, text, centered = false }: { eyebrow: string; title: string; text?: string; centered?: boolean }) { return <div className={centered ? 'mx-auto max-w-2xl text-center' : 'max-w-2xl'}><p className="eyebrow">{eyebrow}</p><h1 className="mt-3 font-serif text-4xl font-semibold leading-tight text-primary-800 md:text-5xl">{title}</h1>{text && <p className="mt-5 text-base leading-7 text-secondary-700">{text}</p>}</div>; }
 
