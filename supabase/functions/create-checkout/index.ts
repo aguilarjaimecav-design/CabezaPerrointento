@@ -1,10 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import CryptoJS from "npm:crypto-js@4.2.0";
 
-const REDSYS_MERCHANT_CODE = Deno.env.get("REDSYS_MERCHANT_CODE") ?? "372934588";
-const REDSYS_TERMINAL = Deno.env.get("REDSYS_TERMINAL") ?? "1";
+const REDSYS_MERCHANT_CODE = Deno.env.get("REDSYS_MERCHANT_CODE")?.trim() || "372934588";
+const REDSYS_TERMINAL = Deno.env.get("REDSYS_TERMINAL")?.trim() || "1";
 const REDSYS_CURRENCY = "978";
-const REDSYS_TEST_URL = "https://sis-t.redsys.es:25443/sis/realizarPago";
+const REDSYS_PRODUCTION_URL = "https://sis.redsys.es/sis/realizarPago";
 
 function signRedsysRequest(merchantParameters: string, order: string, secretKey: string): string {
   const merchantKey = CryptoJS.enc.Base64.parse(secretKey);
@@ -396,7 +396,7 @@ Deno.serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({
-        redsys_url: REDSYS_TEST_URL,
+        redsys_url: REDSYS_PRODUCTION_URL,
         redsys_merchant_parameters: merchantParametersB64,
         redsys_signature: signature,
         redsys_merchant_code: REDSYS_MERCHANT_CODE,

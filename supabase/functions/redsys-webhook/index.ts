@@ -56,6 +56,15 @@ function money(n: number) {
   return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(Number(n));
 }
 
+function toBase64(bytes: Uint8Array): string {
+  let result = "";
+  const chunkSize = 0x7ffe;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    result += btoa(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)));
+  }
+  return result;
+}
+
 function escapeHtml(s: string) {
   return s
     .replace(/&/g, "&amp;")
@@ -149,7 +158,7 @@ ${escapeHtml(o.codigo_postal)} ${escapeHtml(o.localidad || "Sevilla")}
 
 async function sendEmailWithAttachment(to: string, subject: string, html: string, attachment?: { content: string; filename: string }) {
   const apiKey = Deno.env.get("RESEND_API_KEY");
-  if (!apiKey) return;
+  if (!apiKey) throw new Error("RESEND_API_KEY no configurado.");
   const body: Record<string, unknown> = {
     from: RESEND_FROM,
     to,
@@ -160,7 +169,7 @@ async function sendEmailWithAttachment(to: string, subject: string, html: string
   if (attachment) {
     body.attachments = [attachment];
   }
-  await fetch("https://api.resend.com/emails", {
+  const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -168,6 +177,7 @@ async function sendEmailWithAttachment(to: string, subject: string, html: string
     },
     body: JSON.stringify(body),
   });
+  if (!response.ok) throw new Error(`Resend rechazó el correo (${response.status}): ${await response.text()}`);
 }
 
 async function generateOrderPdf(order: OrderRow, items: OrderItemRow[], orderId: string): Promise<Uint8Array> {
@@ -177,8 +187,13 @@ async function generateOrderPdf(order: OrderRow, items: OrderItemRow[], orderId:
   const serif = await doc.embedFont(StandardFonts.TimesRomanBoldItalic);
   const page = doc.addPage([595, 842]);
   const { width, height } = page.getSize();
-  const logoBytes = Uint8Array.from(atob(LOGO_BASE64), (char) => char.charCodeAt(0));
-  const logo = await doc.embedJpg(logoBytes);
+  let logo: Awaited<ReturnType<typeof doc.embedJpg>> | null = null;
+  try {
+    const logoBytes = Uint8Array.from(atob(LOGO_BASE64), (char) => char.charCodeAt(0));
+    logo = await doc.embedJpg(logoBytes);
+  } catch (error) {
+    console.error("Logo no disponible para el PDF:", error);
+  }
   const green = rgb(0.02, 0.35, 0.22);
   const paleGreen = rgb(0.91, 0.95, 0.92);
   const dark = rgb(0.13, 0.17, 0.15);
@@ -201,7 +216,7 @@ async function generateOrderPdf(order: OrderRow, items: OrderItemRow[], orderId:
     page.drawText(value, { x: x + 5, y, size, font, color });
   };
 
-  page.drawImage(logo, { x: margin, y: height - 118, width: 70, height: 70 });
+  if (logo) page.drawImage(logo, { x: margin, y: height - 118, width: 70, height: 70 });
   page.drawText("CABEZAPERRO", { x: 115, y: height - 62, size: 23, font: bold, color: green });
   page.drawText("CUIDADO & TRADICIÓN CANINA", { x: 116, y: height - 82, size: 8, font: bold, color: green });
   page.drawText("Paseos · Alimentación · Bienestar", { x: 116, y: height - 99, size: 8, font: bold, color: green });
@@ -227,7 +242,7 @@ async function generateOrderPdf(order: OrderRow, items: OrderItemRow[], orderId:
   for (let i = 1; i < columns.length - 1; i++) page.drawLine({ start: { x: columns[i], y: tableTop }, end: { x: columns[i], y: tableTop - headerHeight }, thickness: 0.7, color: line });
   drawCell("CONCEPTO", columns[0], tableTop - 20, columns[1] - columns[0], 8, bold, white);
   drawCell("CANTIDAD", columns[1], tableTop - 20, columns[2] - columns[1], 8, bold, white);
-  drawCell("PRECIO\nUNITARIO (IVA incluido)", columns[2], tableTop - 17, columns[3] - columns[2], 7.5, bold, white);
+  drawCell("PRECIO UNITARIO (IVA incluido)", columns[2], tableTop - 17, columns[3] - columns[2], 7.5, bold, white);
   drawCell("IMPORTE", columns[3], tableTop - 20, columns[4] - columns[3], 8, bold, white);
 
   const rows = [...items.map((item) => ({ name: item.product_name, quantity: String(item.cantidad), unit: money(item.precio_unitario), amount: money(item.precio_unitario * item.cantidad) }))];
@@ -389,9 +404,10 @@ Deno.serve(async (req: Request) => {
     let pdfPath: string | null = null;
     try {
       const pdfBytes = await generateOrderPdf(order, itemRows, orderId);
-      const base64 = btoa(String.fromCharCode(...pdfBytes));
+      const base64 = toBase64(pdfBytes);
       pdfPath = `orders/${orderId}.pdf`;
-      await uploadToStorage(supabaseUrl, supabaseServiceKey, pdfPath, pdfBytes);
+      const uploaded = await uploadToStorage(supabaseUrl, supabaseServiceKey, pdfPath, pdfBytes);
+      if (!uploaded) throw new Error("No se pudo guardar el ticket en Storage.");
 
       await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${orderId}`, {
         method: "PATCH",
@@ -404,13 +420,16 @@ Deno.serve(async (req: Request) => {
         sendEmailWithAttachment(order.email, `Confirmación de tu pedido en ${STORE_NAME}`, customerEmailHtml(order, itemRows), attachment),
         sendEmailWithAttachment(STORE_EMAIL, `Nuevo pedido confirmado · ${STORE_NAME}`, sellerEmailHtml(order, itemRows, orderId), attachment),
       ]);
-    } catch {
+    } catch (error) {
+      console.error("Ticket o email no completado:", error);
       try {
         await Promise.all([
           sendEmailWithAttachment(order.email, `Confirmación de tu pedido en ${STORE_NAME}`, customerEmailHtml(order, itemRows)),
           sendEmailWithAttachment(STORE_EMAIL, `Nuevo pedido confirmado · ${STORE_NAME}`, sellerEmailHtml(order, itemRows, orderId)),
         ]);
-      } catch { /* best-effort */ }
+      } catch (emailError) {
+        console.error("Email de respaldo no enviado:", emailError);
+      }
     }
   }
 

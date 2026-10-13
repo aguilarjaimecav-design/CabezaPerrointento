@@ -245,7 +245,7 @@ Deno.serve(async (req: Request) => {
     // Upload to storage (overwrite)
     const pdfPath = `orders/${orderId}.pdf`;
     const encodedPath = pdfPath.split("/").map(encodeURIComponent).join("/");
-    await fetch(`${supabaseUrl}/storage/v1/object/tickets/${encodedPath}`, {
+    const uploadRes = await fetch(`${supabaseUrl}/storage/v1/object/tickets/${encodedPath}`, {
       method: "POST",
       headers: {
         apikey: supabaseServiceKey,
@@ -255,6 +255,7 @@ Deno.serve(async (req: Request) => {
       },
       body: pdfBytes,
     });
+    if (!uploadRes.ok) throw new Error(`No se pudo guardar el ticket (${uploadRes.status}): ${await uploadRes.text()}`);
 
     // Send email with attachment
     const emailRes = await fetch("https://api.resend.com/emails", {

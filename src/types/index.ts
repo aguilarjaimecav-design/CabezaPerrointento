@@ -1,6 +1,6 @@
 export type Especie = 'perro' | 'gato';
 
-export type Categoria = 'pienso-perros' | 'pienso-gatos' | 'humeda-perros' | 'humeda-gatos' | 'Complementos';
+export type Categoria = 'pienso-perros' | 'pienso-gatos' | 'humeda-perros' | 'humeda-gatos' | 'Complementos' | 'Accesorios';
 
 export interface NutrienteInfo {
   etiqueta: string;

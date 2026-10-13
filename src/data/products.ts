@@ -7,6 +7,7 @@ export const CATEGORIAS: { slug: Categoria; nombre: string; especie: 'perro' | '
   { slug: 'humeda-perros', nombre: 'Comida húmeda para perros', especie: 'perro' },
   { slug: 'humeda-gatos', nombre: 'Comida húmeda para gatos', especie: 'gato' },
   { slug: 'Complementos', nombre: 'Complementos', especie: 'ambas' },
+  { slug: 'Accesorios', nombre: 'Accesorios', especie: 'ambas' },
 ];
 
 interface ProductRow {
