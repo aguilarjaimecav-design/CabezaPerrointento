@@ -646,9 +646,14 @@ footer .footer-links a:hover::after { width: 100%; }
   padding: 0;
   overflow: hidden;
 }
-.sevilla-skyline-svg {
+.sevilla-skyline-image {
   display: block;
-  width: 100%;
+  width: min(100%, 720px);
   height: 140px;
-  max-height: 180px;
+  margin: 0 auto;
+  object-fit: cover;
+  object-position: center 58%;
+  mix-blend-mode: multiply;
+  opacity: 0.72;
+  filter: grayscale(1) contrast(0.9);
 }
