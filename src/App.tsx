@@ -302,7 +302,78 @@ function AzulejoStrip() {
   );
 }
 
-function Layout({ children }: { children: React.ReactNode }) { return <><Header /><main>{children}</main><WhatsAppButton /><CartToast /><AzulejoStrip /><Footer /></>; }
+function SevillaSkyline() {
+  return (
+    <div className="sevilla-skyline" aria-hidden="true">
+      <svg viewBox="0 0 1200 180" preserveAspectRatio="xMidYMax meet" className="sevilla-skyline-svg">
+        <defs>
+          <linearGradient id="skylineFade" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#23402A" stopOpacity="0" />
+            <stop offset="40%" stopColor="#23402A" stopOpacity="0.06" />
+            <stop offset="100%" stopColor="#23402A" stopOpacity="0.12" />
+          </linearGradient>
+        </defs>
+        <g fill="url(#skylineFade)">
+          {/* Torre Sevilla (edificio alto a la izquierda) */}
+          <rect x="40" y="20" width="35" height="155" />
+          <rect x="48" y="12" width="19" height="12" />
+          {/* Las Setas (Metropol Parasol) */}
+          <path d="M120 120 Q140 95 160 120 Q170 110 180 120 Q190 100 210 120 Q220 112 230 120 L230 175 L120 175 Z" />
+          <path d="M125 110 Q145 88 165 110 Q175 100 185 110 Q195 92 215 110 L215 130 L125 130 Z" opacity="0.5" />
+          {/* La Giralda (torre central) */}
+          <rect x="430" y="30" width="42" height="145" />
+          <rect x="437" y="45" width="28" height="3" />
+          <rect x="437" y="70" width="28" height="3" />
+          <rect x="437" y="95" width="28" height="3" />
+          <rect x="437" y="120" width="28" height="3" />
+          <rect x="437" y="145" width="28" height="3" />
+          <rect x="441" y="18" width="20" height="14" />
+          <path d="M446 5 L456 0 L466 5 L456 18 Z" />
+          <circle cx="456" cy="2" r="2" />
+          {/* Torre del Oro (torre derecha de Giralda) */}
+          <path d="M580 110 L580 170 L625 170 L625 110 L620 105 L585 105 Z" />
+          <path d="M582 100 Q602 85 623 100 L623 108 L582 108 Z" />
+          <path d="M585 95 Q602 82 620 95 L620 100 L585 100 Z" opacity="0.6" />
+          {/* Puente de Triana (puente con arcos) */}
+          <path d="M660 140 L660 170 L940 170 L940 140" />
+          <path d="M680 140 Q700 120 720 140" />
+          <path d="M760 140 Q780 120 800 140" />
+          <path d="M840 140 Q860 120 880 140" />
+          <path d="M920 140 Q940 120 960 140" />
+          <path d="M680 140 L720 140" />
+          <path d="M760 140 L800 140" />
+          <path d="M840 140 L880 140" />
+          {/* Edificios pequeños de Triana */}
+          <rect x="670" y="130" width="18" height="40" />
+          <rect x="695" y="135" width="14" height="35" />
+          <rect x="740" y="128" width="20" height="42" />
+          <rect x="770" y="132" width="16" height="38" />
+          <rect x="810" y="125" width="22" height="45" />
+          <rect x="840" y="130" width="18" height="40" />
+          <rect x="870" y="135" width="14" height="35" />
+          <rect x="900" y="128" width="20" height="42" />
+          {/* Edificios lado izquierdo */}
+          <rect x="220" y="130" width="30" height="45" />
+          <rect x="260" y="125" width="25" height="50" />
+          <rect x="300" y="135" width="28" height="40" />
+          <rect x="350" y="120" width="35" height="55" />
+          <rect x="400" y="140" width="20" height="35" />
+          {/* Edificios centro derecha */}
+          <rect x="640" y="125" width="22" height="45" />
+          {/* Casas pequeñas derecha */}
+          <rect x="980" y="125" width="20" height="45" />
+          <rect x="1010" y="130" width="18" height="40" />
+          <rect x="1040" y="120" width="25" height="50" />
+          <rect x="1075" y="128" width="20" height="42" />
+          <rect x="1105" y="135" width="16" height="35" />
+          <rect x="1130" y="125" width="22" height="45" />
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+function Layout({ children }: { children: React.ReactNode }) { return <><Header /><main>{children}</main><WhatsAppButton /><CartToast /><AzulejoStrip /><SevillaSkyline /><Footer /></>; }
 
 function SectionIntro({ eyebrow, title, text, centered = false }: { eyebrow: string; title: string; text?: string; centered?: boolean }) { return <div className={centered ? 'mx-auto max-w-2xl text-center' : 'max-w-2xl'}><p className="eyebrow">{eyebrow}</p><h1 className="mt-3 font-serif text-4xl font-semibold leading-tight text-primary-800 md:text-5xl">{title}</h1>{text && <p className="mt-5 text-base leading-7 text-secondary-700">{text}</p>}</div>; }
 
